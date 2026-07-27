@@ -541,4 +541,4 @@ assertions current), per the repo's "committed artifact" convention.
 | GROM/GPL header + list layout | `classic99/addons/makecart.cpp:974-997,1509-1517`; `classic99/console/Tiemul.cpp:3292-3367`; real bytes in `roms/994AGROM.Bin` |
 | GPL opcode table + addressing forms | `classic99/addons/gpl.cpp:46-446` (table 46-314, addressing 317-334) |
 | Title/menu strings in GROM 0 | `roms/994AGROM.Bin`: `>014B`, `>0490` (title); `>2152`/`>216F` (TI BASIC entry) |
-| Cartridge auto-header (model for GPL header synthesis) | `assembler/ASSEMBLER.md:267-371` (cartridge header + `.ctg` container) |
+| Cartridge auto-header (model for GPL header synthesis) | `docs/ASSEMBLER.md:267-371` (cartridge header + `.ctg` container) |

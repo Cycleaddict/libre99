@@ -92,7 +92,7 @@ cargo run -p libre99-asm -- \
 ```
 
 `libre99asm` speaks the TI Editor/Assembler dialect and emits a `ti99sim`-format
-`.ctg` the emulator loads. (See `assembler/ASSEMBLER.md` for the language and
+`.ctg` the emulator loads. (See `docs/ASSEMBLER.md` for the language and
 `docs/history/ASSEMBLER-POC-PLAN.md` for how the toolchain was bootstrapped.)
 
 ---

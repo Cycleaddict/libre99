@@ -3,7 +3,7 @@
 Scoped, de-risked plan for the first deliverable: a real (minimal) TMS9900
 assembler that turns the spec's §10.2 **HELLO** source into a bootable `.ctg`
 that displays HELLO on screen. This is the executable subset of
-[`ASSEMBLER.md`](../../assembler/ASSEMBLER.md) — which is now the current
+[`ASSEMBLER.md`](../ASSEMBLER.md) — which is now the current
 guide; this plan is the historical bootstrap record.
 
 **Decisions locked:** POC demo = **HELLO text on screen** (§10.2). Encoder scope
@@ -61,7 +61,7 @@ crates/libre99-asm/
 > complete two-pass assembler (all 69 base opcodes) with a disassembler and
 > the console-ROM build mode. Kept as the record of how the toolchain was
 > bootstrapped; the current guide is
-> [../../assembler/ASSEMBLER.md](../../assembler/ASSEMBLER.md).
+> [../ASSEMBLER.md](../ASSEMBLER.md).
 
 # libre99asm <in.asm> -o out.ctg --name NAME
   tests/

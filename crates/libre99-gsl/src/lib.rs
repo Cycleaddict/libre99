@@ -43,41 +43,35 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//! # libre99-gpl — a GPL (Graphics Programming Language) toolchain for the TI-99/4A
+//! # libre99-gsl — GSL, the GPL Structured Language
 //!
-//! The TI-99/4A's operating system is almost entirely **GPL bytecode** stored in
-//! serial GROM chips and interpreted by a small machine-code kernel in the
-//! console ROM (`crates/libre99-core/src/lib.rs:6-11`). This crate is the toolchain
-//! for the **system-GROM rewrite** — authoring original, TI-copyright-free
-//! console firmware in GPL that the genuine ROM interpreter runs (see
-//! `original-content/system-roms/`).
+//! A high-level language over TI-99/4A GPL bytecode, with a **compiler** and a
+//! **self-verifying decompiler**. The language reference is `docs/GSL.md`; in
+//! short:
 //!
-//! Pieces:
-//!
-//! * [`operand`] — the GPL general-address (GAS) operand encoding, shared by the
-//!   encoder and decoder.
-//! * [`isa`] — opcode signatures.
-//! * [`decode`] / [`disasm`] — turning GPL bytes back into instructions, for
-//!   reconnaissance and for checking our own output.
-//! * [`encode`] / [`asm`] — the assembler: original GPL source → a system-GROM
-//!   image the emulator boots in place of `994AGROM.Bin`.
-//!
-//! The encoder targets a curated, **execution-validated** opcode subset: every
-//! instruction we emit is proven either by a golden test or by running its bytes
-//! on the real console ROM inside `libre99-core` (mirroring how `libre99-asm`'s output
-//! is proven by booting it). The decoder additionally makes a best-effort at the
-//! wider ISA for disassembly.
+//! * [`codegen::compile`] turns `.gsl` source into a 64 KiB GROM-space image
+//!   (plus ROM banks and container metadata) by lowering to `libre99gpl`
+//!   assembler source and running the real assembler — inline `asm { }`
+//!   blocks are therefore aligned with the standalone assembler by
+//!   construction.
+//! * [`decompile::decompile`] turns a `.ctg`/`.bin` image into GSL text and
+//!   **verifies** it: the generated file recompiles byte-identically to the
+//!   input payload (anything the tracer cannot express canonically survives
+//!   as raw `data`/`BYTE` bytes), so decompiled output is functionally
+//!   equivalent by construction.
+//! * [`container`] normalizes the on-disk formats (`ti99sim` `.ctg` via
+//!   `libre99-core`, raw GROM/ROM dumps) into payloads and back.
 
-pub mod asm;
-pub mod census;
-pub mod decode;
-pub mod disasm;
-pub mod encode;
-pub mod font;
-pub mod keymap;
-pub mod logo;
-pub mod isa;
-pub mod operand;
-pub mod system_grom;
+pub mod ast;
+pub mod codegen;
+pub mod container;
+pub mod decompile;
+pub mod fmtscan;
+pub mod lexer;
+pub mod parser;
+pub mod wellknown;
 
-pub use asm::{assemble, assemble_sized, Assembly, Diag, GROM_IMAGE_LEN, GROM_SPACE_LEN};
+pub use ast::OutFormat;
+pub use codegen::{compile, Compiled, GslError};
+pub use container::{parse_input, payload_of, write_output, Payload};
+pub use decompile::{decompile, Decompiled, Options};

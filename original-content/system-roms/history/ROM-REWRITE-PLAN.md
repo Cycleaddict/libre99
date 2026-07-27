@@ -614,7 +614,7 @@ architecture; `Options { base, auto_header }` already exists ✅):
    `>02B2` KSCAN, `>0900` ISR, `>0CFA` tables — every frozen address gets its
    own `AORG`d region). Semantics: forward-only placement with zero-fill gaps;
    **error on overlap** (two regions colliding is always a bug); keep `$`/label
-   semantics absolute. E/A's `AORG` is the model (`assembler/ASSEMBLER.md`
+   semantics absolute. E/A's `AORG` is the model (`docs/ASSEMBLER.md`
    FR-6/§6 specifies it; the E/A manual PDF is in `assembler/`).
 3. **Layout assertions**: a directive or builder-side check asserting
    `label == >addr` for the frozen-address table (so a size regression in an
@@ -1015,7 +1015,7 @@ original-content/system-roms/rom/
 | GROM tracer (fetch-stream oracle) | `crates/libre99-core/src/machine.rs` `grom_record`/`grom_log`; `../RECON.md` "GPL execution model" |
 | GPL ISA already extracted | `crates/libre99-gpl/src/isa.rs`; `../RECON.md` §8 |
 | Scratchpad map + ISR/SCAN/XML contracts (GROM side) | `../RECON.md` (R1, scratchpad map, §§1–11) |
-| Assembler today (base/auto-header seam; AORG rejection) | `crates/libre99-asm/src/lib.rs:49-64,362-370`; spec `assembler/ASSEMBLER.md`; E/A manual PDF `assembler/` |
+| Assembler today (base/auto-header seam; AORG rejection) | `crates/libre99-asm/src/lib.rs:49-64,362-370`; spec `docs/ASSEMBLER.md`; E/A manual PDF `assembler/` |
 | 9901/CRU model (timer minimal; cassette unwired) | `crates/libre99-core/src/cru.rs` |
 | CPU core (full ISA incl. XOP/IDLE; conformance-tested) | `crates/libre99-core/src/cpu.rs` |
 | Authentic ROM dumps made for this plan (vectors, `>0CFA/>0D1A` tables, ISR/KSCAN heads, tail) | §1 ✅ rows; reproduce with `xxd` offsets given there |

@@ -6,6 +6,21 @@ clean-room firmware it embeds, and TI PYTHON's banner.
 
 ## Unreleased
 
+- **GSL — the GPL Structured Language** (`crates/libre99-gsl`, binary
+  `libre99gsl`, reference [docs/GSL.md](docs/GSL.md)): a high-level language
+  over GPL bytecode with both directions implemented. The **compiler** lowers
+  GSL (C-flavored statements over the machine's real model — typed vars bound
+  to scratchpad/VDP addresses, one condition bit, `asm { }` and `data { }`
+  blocks, monolithic files) to `libre99gpl` assembler source and packages
+  `.ctg`/GROM images; the **decompiler** turns real cartridges into GSL with
+  header-driven entry discovery, a grammar-exact FMT scanner, per-instruction
+  re-encode verification, and metadata comments — and refuses to emit a file
+  unless it recompiles **byte-identically** to the input payload. Verified:
+  the clean-room console GROM, all three original cartridges, Tunnels of
+  Doom, and the full 137-cartridge corpus round-trip byte-for-byte
+  (`crates/libre99-gsl/tests/`, incl. an `--ignored` full-corpus sweep). The
+  GPL assembler grew `assemble_sized` so cartridge GROM space (`>6000+`) can
+  be assembled. `assembler/ASSEMBLER.md` moved to `docs/ASSEMBLER.md`.
 - The `Esc`/`F1` **help overlay was redesigned** to the approved four-tab
   "quiet terminal" design (per `design_handoff_help_redesign`): solid black
   backdrop, hairline rules and whitespace instead of cards, a single cyan
@@ -79,7 +94,7 @@ repository whose history has been IP-clean from commit 1.
 **The toolchain and original content**
 
 - `libre99asm` — a from-scratch, Editor/Assembler-compatible TMS9900
-  assembler that emits bootable cartridges ([guide](assembler/ASSEMBLER.md)).
+  assembler that emits bootable cartridges ([guide](docs/ASSEMBLER.md)).
 - `libre99gpl` — GPL assembler/decoder/disassembler; builds the console GROM.
 - Two original, playable cartridges built by that toolchain: **Titris** and
   **Sokoban**.

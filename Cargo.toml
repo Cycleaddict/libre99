@@ -14,10 +14,16 @@
 #   crates/libre99-asm    the TMS9900 assembler + cartridge packager (`libre99asm`).
 #                      Pure `std`; depends only on libre99-core (for the shared
 #                      `.ctg` writer and round-trip/boot tests).
+#
+#   crates/libre99-gpl    the GPL assembler/decoder/disassembler + console-GROM
+#                      build (`libre99gpl`). Pure `std`.
+#
+#   crates/libre99-gsl    GSL, the GPL Structured Language: compiler + verified
+#                      decompiler (`libre99gsl`). Pure `std`; see docs/GSL.md.
 
 [workspace]
 resolver = "2"
-members = ["crates/libre99-core", "crates/libre99-app", "crates/libre99-asm", "crates/libre99-gpl"]
+members = ["crates/libre99-core", "crates/libre99-app", "crates/libre99-asm", "crates/libre99-gpl", "crates/libre99-gsl"]
 
 [workspace.package]
 # The single source of truth for the project version. Everything that reports a

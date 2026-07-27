@@ -125,8 +125,9 @@ cargo run --release -p libre99-app -- --system-rom path/to/994aROM.Bin --system-
 |---|---|---|
 | `crates/libre99-core` | The emulator core: every chip, the console bus, save states. Pure `std`, **zero third-party dependencies**, `#![forbid(unsafe_code)]`. | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | `crates/libre99-app` | The desktop app: window, audio, input, overlays, media mounting, config, logging. | [docs/USER-GUIDE.md](docs/USER-GUIDE.md) |
-| `crates/libre99-asm` | `libre99asm` — a complete two-pass TMS9900 assembler + `.ctg` cartridge packager + disassembler. | [assembler/ASSEMBLER.md](assembler/ASSEMBLER.md) |
+| `crates/libre99-asm` | `libre99asm` — a complete two-pass TMS9900 assembler + `.ctg` cartridge packager + disassembler. | [docs/ASSEMBLER.md](docs/ASSEMBLER.md) |
 | `crates/libre99-gpl` | `libre99gpl` — GPL (Graphics Programming Language) assembler/disassembler and the console-GROM build + verification harness. | [original-content/system-roms/grom/README.md](original-content/system-roms/grom/README.md) |
+| `crates/libre99-gsl` | `libre99gsl` — **GSL**, a high-level language over GPL: a compiler (GSL → `.ctg`/GROM image via the GPL assembler) and a self-verifying decompiler (real cartridges → GSL, byte-identical on recompile). | [docs/GSL.md](docs/GSL.md) |
 | `original-content/system-roms` | The clean-room console ROM + GROM rewrite (Libre99): original firmware, differentially verified, booted by default. | [original-content/system-roms/README.md](original-content/system-roms/README.md) |
 | `original-content/cartridges/titris` | Titris, an original cartridge authored with the project's own assembler. | [its README](original-content/cartridges/titris/README.md) |
 | `original-content/cartridges/sokoban` | Sokoban, a second original cartridge — the classic puzzle with twelve credited Microban levels. | [its README](original-content/cartridges/sokoban/README.md) |
@@ -141,8 +142,10 @@ cargo run --release -p libre99-app -- --system-rom path/to/994aROM.Bin --system-
 - **[docs/USER-GUIDE.md](docs/USER-GUIDE.md)** — the emulator's complete user
   manual: command line, keyboard, hotkeys, media, save states, preferences,
   logs, limitations.
-- **[assembler/ASSEMBLER.md](assembler/ASSEMBLER.md)** — the `libre99asm` user
+- **[docs/ASSEMBLER.md](docs/ASSEMBLER.md)** — the `libre99asm` user
   guide and TMS9900 assembly-language reference.
+- **[docs/GSL.md](docs/GSL.md)** — the GSL language reference: the GPL
+  high-level language, its compiler, and the verified decompiler.
 - **[docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md)** — behaviors that look like
   bugs but are authentic hardware/firmware behavior, plus genuine open issues.
 

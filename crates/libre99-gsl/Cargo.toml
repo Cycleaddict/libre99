@@ -1,0 +1,23 @@
+# GSL — the GPL Structured Language: a high-level language over TI-99/4A GPL
+# bytecode, with a compiler (GSL → GROM image / .ctg via the libre99-gpl
+# assembler) and a self-verifying decompiler (.ctg / .bin → GSL). Pure `std`,
+# like the rest of the toolchain; depends only on sibling crates:
+#
+#   libre99-gpl   the GPL assembler (codegen back end), encoder/decoder, ISA
+#   libre99-core  the shared `.ctg` cartridge container reader/writer
+#
+# The language reference is docs/GSL.md.
+[package]
+name = "libre99-gsl"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "libre99gsl"
+path = "src/main.rs"
+
+[dependencies]
+libre99-gpl = { path = "../libre99-gpl" }
+libre99-core = { path = "../libre99-core" }

@@ -9,7 +9,7 @@ current state of the world is in [STATUS.md](STATUS.md).
 ## Build and test
 
 ```bash
-cargo test --workspace           # the whole suite (500+ tests, all four crates)
+cargo test --workspace           # the whole suite (500+ tests, all five crates)
 cargo clippy --workspace         # keep it clean — CI enforces -D warnings
 cargo run --release -p libre99-app  # run the emulator
 ```
@@ -120,7 +120,8 @@ the same commit**:
   same commit that lands a feature).
 - New quirk reports / resolutions → [KNOWN-ISSUES.md](KNOWN-ISSUES.md);
   firmware gaps → `original-content/system-roms/LIMITATIONS.md`.
-- Assembler language/CLI changes → [assembler/ASSEMBLER.md](../assembler/ASSEMBLER.md).
+- Assembler language/CLI changes → [docs/ASSEMBLER.md](ASSEMBLER.md).
+- GSL language/compiler/decompiler changes → [docs/GSL.md](GSL.md).
 
 Completed plans and dated reports are not deleted — they move to
 [docs/history/](history/) (project-wide) or

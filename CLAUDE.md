@@ -15,7 +15,9 @@ The [README](README.md) is the overview; `docs/` holds the project docs:
 [STATUS](docs/STATUS.md), [ROADMAP](docs/ROADMAP.md),
 [KNOWN-ISSUES](docs/KNOWN-ISSUES.md), [CROSS-VALIDATION](docs/CROSS-VALIDATION.md),
 and `docs/history/` (archived plans/reports). The assembler guide is
-[assembler/ASSEMBLER.md](assembler/ASSEMBLER.md); the firmware-rewrite docs
+[docs/ASSEMBLER.md](docs/ASSEMBLER.md); the GSL language reference (the GPL
+high-level language + compiler/decompiler) is [docs/GSL.md](docs/GSL.md); the
+firmware-rewrite docs
 start at [original-content/system-roms/README.md](original-content/system-roms/README.md).
 
 **Documentation is part of every change — keep it fresh.** When a change
@@ -92,7 +94,7 @@ parallel — check `git status` for a sibling's in-flight work before committing
 
 ## Build / test
 
-- `cargo test --workspace` — all four crates (core, app, asm, gpl); the
+- `cargo test --workspace` — all five crates (core, app, asm, gpl, gsl); the
   emulator core (`-p libre99-core`) is pure `std` with zero third-party deps.
 - `cargo clippy --workspace` — keep this clean.
 - Repo scripts must be `sh` + `cargo` only (no `make`, no `python` on the PC).

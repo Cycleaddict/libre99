@@ -112,7 +112,7 @@ cargo run -p libre99-asm -- \
 
 The `--name` flag carries the full 12-character menu title; the source's
 `IDT` stays within the Editor/Assembler dialect's 8-character cap. (See
-[assembler/ASSEMBLER.md](../../../assembler/ASSEMBLER.md) for the language.)
+[docs/ASSEMBLER.md](../../../docs/ASSEMBLER.md) for the language.)
 
 ---
 

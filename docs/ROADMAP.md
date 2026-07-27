@@ -186,7 +186,7 @@ Each item is tagged: **[done]** implemented and merged to `main` ·
   Editor/Assembler-compatible TMS9900 assembler that emits bootable `.ctg`
   cartridges, so new software — and AI agents — can author cartridges for the
   emulator end to end. User guide and language reference:
-  **[ASSEMBLER.md](../assembler/ASSEMBLER.md)**; pairs with the `libre99-app
+  **[ASSEMBLER.md](ASSEMBLER.md)**; pairs with the `libre99-app
   --cartridge-file <path>` flag to close the build-run loop (relates to §2's
   "arbitrary file paths"). **[done]** (full TMS9900 ISA; the playable
   [Titris](../original-content/cartridges/titris/README.md),

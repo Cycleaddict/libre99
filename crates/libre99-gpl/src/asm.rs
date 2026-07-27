@@ -74,6 +74,9 @@ use crate::operand::Operand;
 const GROM_SLOT: usize = 0x2000;
 /// A system-GROM image is three 8 KiB slots (GROMs 0/1/2 at `>0000–5FFF`).
 pub const GROM_IMAGE_LEN: usize = 3 * GROM_SLOT;
+/// The full 64 KiB GROM address space (eight slots) — what cartridge builds
+/// assemble into (`assemble_sized`), since cartridge GROMs live at `>6000+`.
+pub const GROM_SPACE_LEN: usize = 8 * GROM_SLOT;
 
 /// One assembly diagnostic tied to a source line (`0` = whole program).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -109,10 +112,18 @@ pub struct Assembly {
 
 /// Assemble GPL `src` into a system-GROM image.
 pub fn assemble(src: &str) -> Result<Assembly, Vec<Diag>> {
+    assemble_sized(src, GROM_IMAGE_LEN)
+}
+
+/// Assemble GPL `src` into an image of `image_len` bytes (zero-filled where
+/// unpopulated). [`assemble`] fixes the length at the 24 KiB system-GROM
+/// image; cartridge builds pass [`GROM_SPACE_LEN`] so code can live anywhere
+/// in the 64 KiB GROM space (`>6000+`).
+pub fn assemble_sized(src: &str, image_len: usize) -> Result<Assembly, Vec<Diag>> {
     let lines = lex::parse(src);
     let mut a = Asm {
         syms: HashMap::new(),
-        image: vec![0u8; GROM_IMAGE_LEN],
+        image: vec![0u8; image_len],
         lc: 0,
         diags: Vec::new(),
         emit: false,
@@ -157,7 +168,8 @@ impl Asm {
             if i < self.image.len() {
                 self.image[i] = b;
             } else {
-                self.diags.push(Diag::at(0, format!("address >{:04X} is past the 24 KiB image", self.lc)));
+                let kib = self.image.len() / 1024;
+                self.diags.push(Diag::at(0, format!("address >{:04X} is past the {kib} KiB image", self.lc)));
             }
         }
         self.lc = self.lc.wrapping_add(1);

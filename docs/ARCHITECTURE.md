@@ -62,7 +62,7 @@ comments next to the code that encodes each quirk.
 
 ## 2. Code organization
 
-A **Cargo workspace of four crates**. The split makes the core's "zero
+A **Cargo workspace of five crates**. The split makes the core's "zero
 third-party dependencies" rule structural rather than aspirational: only the
 desktop app links windowing/audio/logging crates.
 
@@ -71,6 +71,7 @@ crates/libre99-core/   the emulator (pure std, zero deps, #![forbid(unsafe_code)
 crates/libre99-app/    desktop frontend (winit + softbuffer + cpal + log/simplelog + toml)
 crates/libre99-asm/    libre99asm — TMS9900 assembler + .ctg packager + disassembler (pure std)
 crates/libre99-gpl/    libre99gpl — GPL assembler/decoder/disassembler + console-GROM build (pure std)
+crates/libre99-gsl/    libre99gsl — GSL, the GPL Structured Language: compiler + verified decompiler (pure std)
 ```
 
 `libre99-asm` and `libre99-gpl` are both stand-alone tools **and** the build +
