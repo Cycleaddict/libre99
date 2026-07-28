@@ -342,6 +342,8 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
         rand: bool,
         xml: BTreeSet<u8>,
         calls: BTreeSet<u16>,
+        /// Readable text this function's FMT blocks print.
+        prints: Vec<String>,
     }
     let mut fninfo: BTreeMap<u16, FnInfo> = BTreeMap::new();
     let mut vreg_loads: BTreeMap<u8, BTreeSet<u8>> = BTreeMap::new();
@@ -356,8 +358,38 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
             let Some(fa) = cur else { continue };
             let info = fninfo.entry(fa).or_default();
             let d = match &tile.kind {
-                TKind::Fmt(_) => {
+                TKind::Fmt(b) => {
                     info.fmt = true;
+                    // Harvest the text this block prints (bias-adjusted when
+                    // that is what makes it readable).
+                    let printable = |s: &[u8]| s.iter().all(|&c| (0x20..0x7F).contains(&c));
+                    let mut bias = 0u8;
+                    for (_, ir) in &b.ops {
+                        match ir {
+                            fmtscan::Ir::BiasImm(v) => bias = *v,
+                            fmtscan::Ir::BiasGas(_) => bias = 0,
+                            fmtscan::Ir::Text { bytes, .. } => {
+                                let shown: Option<String> = if printable(bytes) {
+                                    Some(bytes.iter().map(|&c| c as char).collect())
+                                } else {
+                                    let adj: Vec<u8> =
+                                        bytes.iter().map(|&c| c.wrapping_add(bias)).collect();
+                                    printable(&adj)
+                                        .then(|| adj.iter().map(|&c| c as char).collect())
+                                };
+                                if let Some(s) = shown {
+                                    let s = s.trim().to_string();
+                                    if s.len() >= 3
+                                        && !info.prints.contains(&s)
+                                        && info.prints.len() < 6
+                                    {
+                                        info.prints.push(s);
+                                    }
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
                     continue;
                 }
                 TKind::Stmt(d) | TKind::Fallback(d, _) => d,
@@ -776,6 +808,7 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
     enum Piece {
         Fn { addr: u16, comments: Vec<String> },
         Stmt { addr: u16, len: u16, text: String, note: Option<String>, demoted: bool },
+        Fmt { addr: u16, len: u16, lines: Vec<String>, notes: Vec<String>, demoted: bool },
         Bytes { addr: u16, len: u16, notes: Vec<String> },
         Data { addr: u16, len: usize, comments: Vec<String> },
     }
@@ -921,6 +954,24 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
                     }
                 }
                 if let Some(i) = info {
+                    if !i.prints.is_empty() {
+                        let shown: Vec<String> = i
+                            .prints
+                            .iter()
+                            .take(4)
+                            .map(|s| {
+                                if s.len() > 26 {
+                                    format!("{:?}", format!("{}..", &s[..24]))
+                                } else {
+                                    format!("{s:?}")
+                                }
+                            })
+                            .collect();
+                        let more = if i.prints.len() > 4 { ", ..." } else { "" };
+                        comments.push(format!("// prints: {}{more}", shown.join(", ")));
+                    }
+                }
+                if let Some(i) = info {
                     if !i.calls.is_empty() {
                         let list: Vec<String> = i
                             .calls
@@ -961,12 +1012,27 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
                     let mut notes =
                         vec![format!("* >{addr:04X}  FMT block, {} sub-ops:", b.ops.len())];
                     for (a, d) in b.ops.iter().take(40) {
-                        notes.push(format!("* >{a:04X}    {d}"));
+                        notes.push(format!("* >{a:04X}    {}", fmtscan::describe(d)));
                     }
                     if b.ops.len() > 40 {
                         notes.push("*          ...".into());
                     }
-                    pieces.push(Piece::Bytes { addr, len: tile.len, notes });
+                    // Emit as fmt { } statements when the block re-encodes
+                    // byte-identically (structural loop-backs, canonical GAS
+                    // operands) and every operand has a spelling.
+                    let end = addr as usize + tile.len as usize;
+                    let identical = fmtscan::reencode(b, addr)
+                        .is_some_and(|by| by[..] == img[addr as usize..end]);
+                    match identical.then(|| em.fmt_lines(b)).flatten() {
+                        Some(lines) => pieces.push(Piece::Fmt {
+                            addr,
+                            len: tile.len,
+                            lines,
+                            notes,
+                            demoted: false,
+                        }),
+                        None => pieces.push(Piece::Bytes { addr, len: tile.len, notes }),
+                    }
                 }
                 TKind::Fallback(d, reason) => {
                     let notes = vec![format!(
@@ -1328,6 +1394,28 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
                         }
                     }
                 }
+                Piece::Fmt { addr, len, lines, notes, demoted } => {
+                    if let Some(l) = em.labels.get(addr) {
+                        close_asm(&mut out, &mut asm_open);
+                        push(&mut out, &format!("{l}:"));
+                    }
+                    if *demoted {
+                        if !asm_open {
+                            push(&mut out, "    asm {");
+                            asm_open = true;
+                        }
+                        for n in notes {
+                            push(&mut out, n);
+                        }
+                        push(&mut out, &format!("* >{addr:04X}  demoted: recompiled bytes differed"));
+                        emit_byte_rows(&mut out, &img, *addr, *len);
+                    } else {
+                        close_asm(&mut out, &mut asm_open);
+                        for l in lines {
+                            push(&mut out, &format!("    {l}"));
+                        }
+                    }
+                }
                 Piece::Bytes { addr, len, notes } => {
                     if let Some(l) = em.labels.get(addr) {
                         close_asm(&mut out, &mut asm_open);
@@ -1377,7 +1465,7 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
         for p in pieces {
             match p {
                 Piece::Fn { .. } => s.fns += 1,
-                Piece::Stmt { len, demoted, .. } => {
+                Piece::Stmt { len, demoted, .. } | Piece::Fmt { len, demoted, .. } => {
                     if *demoted {
                         s.demoted_instrs += 1;
                         s.fallback_bytes += *len as usize;
@@ -1427,7 +1515,9 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
         let mut demoted_any = false;
         for &b in &bad {
             for p in pieces.iter_mut() {
-                if let Piece::Stmt { addr, len, demoted, .. } = p {
+                if let Piece::Stmt { addr, len, demoted, .. }
+                | Piece::Fmt { addr, len, demoted, .. } = p
+                {
                     let (a, e) = (*addr as u32, *addr as u32 + *len as u32);
                     if !*demoted && (a..e).contains(&(b as u32)) {
                         *demoted = true;
@@ -1442,6 +1532,30 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
                 diffs.join("\n")
             ));
         }
+    }
+}
+
+/// A GSL string literal for raw bytes (escapes per the lexer: `\\ \" \xNN`).
+fn gsl_string(bytes: &[u8]) -> String {
+    let mut s = String::from("\"");
+    for &b in bytes {
+        match b {
+            b'"' => s.push_str("\\\""),
+            b'\\' => s.push_str("\\\\"),
+            0x20..=0x7E => s.push(b as char),
+            _ => s.push_str(&format!("\\x{b:02X}")),
+        }
+    }
+    s.push('"');
+    s
+}
+
+/// A GSL spelling for one character value (char literal when printable).
+fn gsl_char(b: u8) -> String {
+    match b {
+        b'\'' | b'\\' => format!("0x{b:02X}"),
+        0x20..=0x7E => format!("'{}'", b as char),
+        _ => format!("0x{b:02X}"),
     }
 }
 
@@ -1644,6 +1758,85 @@ impl Emitter<'_> {
             return f.clone();
         }
         format!("0x{t:04X}")
+    }
+
+    /// Render a scanned FMT block as `fmt { }` statement lines (outer braces
+    /// included, 4-space inner indent steps). `None` when a GAS operand has
+    /// no place spelling — the caller falls back to raw bytes.
+    fn fmt_lines(&mut self, b: &FmtBlock) -> Option<Vec<String>> {
+        use crate::fmtscan::Ir;
+        let mut lines = vec!["fmt {".to_string()];
+        let mut depth = 1usize;
+        let mut bias = 0u8;
+        let mut i = 0usize;
+        while i < b.ops.len() {
+            let ir = &b.ops[i].1;
+            let pad = "    ".repeat(depth);
+            match ir {
+                Ir::Fend => {}
+                Ir::FendLoop { .. } => {
+                    depth = depth.saturating_sub(1).max(1);
+                    lines.push(format!("{}{}", "    ".repeat(depth), "}"));
+                }
+                Ir::Rptb { count } => {
+                    lines.push(format!("{pad}repeat ({count}) {{"));
+                    depth += 1;
+                }
+                Ir::Row(_) | Ir::Col(_) => {
+                    // Merge an adjacent row/col pair onto one line.
+                    let one = |ir: &Ir| match ir {
+                        Ir::Row(v) => format!("row({v});"),
+                        Ir::Col(v) => format!("col({v});"),
+                        _ => unreachable!(),
+                    };
+                    match b.ops.get(i + 1).map(|(_, n)| n) {
+                        Some(next @ (Ir::Row(_) | Ir::Col(_))) => {
+                            lines.push(format!("{pad}{} {}", one(ir), one(next)));
+                            i += 2;
+                            continue;
+                        }
+                        _ => lines.push(format!("{pad}{}", one(ir))),
+                    }
+                }
+                Ir::Text { vertical, bytes } => {
+                    let name = if *vertical { "vtext" } else { "htext" };
+                    let mut line = format!("{pad}{name}({});", gsl_string(bytes));
+                    let printable = |s: &[u8]| s.iter().all(|&c| (0x20..0x7F).contains(&c));
+                    if bias != 0 && !printable(bytes) {
+                        let adj: Vec<u8> = bytes.iter().map(|&c| c.wrapping_add(bias)).collect();
+                        if printable(&adj) {
+                            let shown: String = adj.iter().map(|&c| c as char).collect();
+                            line.push_str(&format!("   // +bias >{bias:02X}: \"{shown}\""));
+                        }
+                    }
+                    lines.push(line);
+                }
+                Ir::Chars { vertical, count, ch } => {
+                    let name = if *vertical { "vchar" } else { "hchar" };
+                    lines.push(format!("{pad}{name}({count}, {});", gsl_char(*ch)));
+                }
+                Ir::Skip { vertical, count } => {
+                    let name = if *vertical { "vmove" } else { "hmove" };
+                    lines.push(format!("{pad}{name}({count});"));
+                }
+                Ir::BiasImm(v) => {
+                    bias = *v;
+                    lines.push(format!("{pad}bias(0x{v:02X});"));
+                }
+                Ir::BiasGas(g) => {
+                    bias = 0;
+                    let p = self.place(g, false)?;
+                    lines.push(format!("{pad}bias({p});"));
+                }
+                Ir::HStr { count, gas } => {
+                    let p = self.place(gas, false)?;
+                    lines.push(format!("{pad}hstr({count}, {p});"));
+                }
+            }
+            i += 1;
+        }
+        lines.push("}".into());
+        Some(lines)
     }
 
     fn render_tile(&mut self, d: &Decoded) -> Rendered {

@@ -34,6 +34,17 @@ clean-room firmware it embeds, and TI PYTHON's banner.
   stores, the `>D0` sprite terminator, scan loops, `move` source previews);
   data blocks decode strings to literals, render pattern uploads as 8×8
   pixel-art comment bands, and summarize sound lists.
+- **GSL: `fmt { }` blocks** (docs/GSL.md §6.2). GPL's FMT screen-format
+  sub-language is now a first-class island grammar — `htext`/`vtext`,
+  `hchar`/`vchar`, `hmove`/`vmove`, `row`/`col`, `bias` (immediate or
+  from-memory), `hstr`, and `repeat (n) { }` loops whose `FEND` loop-back
+  word the compiler derives via assembler labels. The decompiler converts
+  scanned FMT blocks into `fmt { }` statements when they re-encode
+  byte-identically (structural loop-backs, canonical GAS operands) — for
+  Tunnels of Doom that turns all 82 raw FMT byte blobs into readable
+  statements — and lifts the text they print into `// prints:` function
+  headers. Non-canonical blocks still fall back to annotated `BYTE` rows,
+  and the whole-file byte-identity gate is unchanged.
 - The `Esc`/`F1` **help overlay was redesigned** to the approved four-tab
   "quiet terminal" design (per `design_handoff_help_redesign`): solid black
   backdrop, hairline rules and whitespace instead of cards, a single cyan

@@ -292,6 +292,46 @@ compilation is deterministic, byte for byte:
 The decompiler always emits the spelling that regenerates the original opcode,
 and falls back to raw bytes for anything non-canonical (§10).
 
+### 6.2 `fmt { }` — the screen-format sub-language
+
+GPL's `FMT` opcode (`>08`) switches the interpreter into a second instruction
+set specialized for screen layout, until a terminating `FEND`. GSL spells it
+as an island grammar, the same move as `asm { }` and `data { }`:
+
+```gsl
+fmt {
+    col(20); row(0);
+    htext("HELLO");            // 1..=32 inline chars at the cursor
+    repeat (19) {              // RPTB ... FEND, 1..=32 passes
+        hchar(12, ' ');        // repeat one char 1..=32 times
+        hmove(20);             // skip the cursor forward
+    }
+}
+```
+
+| Statement            | FMT op    | Encoding                              |
+| -------------------- | --------- | ------------------------------------- |
+| `htext("…")`         | HTEX      | `>00`+n-1, then the n chars           |
+| `vtext("…")`         | VTEX      | `>20`+n-1, then the n chars           |
+| `hchar(n, ch)`       | HCHA      | `>40`+n-1, char byte                  |
+| `vchar(n, ch)`       | VCHA      | `>60`+n-1, char byte                  |
+| `hmove(n)`           | HMOVE     | `>80`+n-1                             |
+| `vmove(n)`           | VMOVE     | `>A0`+n-1                             |
+| `repeat (n) { … }`   | RPTB…FEND | `>C0`+n-1 … `>FB` + loop-back word    |
+| `hstr(n, place)`     | string    | `>E0`+n-1, GAS operand (n ≤ 27)       |
+| `bias(imm)`          | BIAS      | `>FC`, value                          |
+| `bias(place)`        | BIAS      | `>FD`, GAS operand                    |
+| `row(n)` / `col(n)`  | ROW / COL | `>FE`/`>FF`, value                    |
+
+Counts encode as *n−1* in five bits, so each op takes 1..=32 (27 for `hstr`);
+the compiler rejects anything outside the range rather than splitting — write
+two statements. The `FEND` closing a `repeat` carries a two-byte loop-back
+address; the compiler derives it from the block structure (an assembler
+label), so it is never written by hand. `bias` adds its value to every
+emitted character (per char for text, once for `hchar`/`vchar`); `FMT` resets
+it to 0 on entry. `bias(name)`/`hstr` follow the §4 bare-name rule: a
+declared var is the from-memory form, anything else is immediate.
+
 ---
 
 ## 7. Inline assembly
@@ -384,7 +424,8 @@ upward, the console OS at `>0000–5FFF`.
      code performs;
    - each `fn` gets a header with its observed effects (formats screen text,
      writes VDP/GRAM, reads keyboard/joystick, drives sound, uses random,
-     XML escapes) plus `calls:` / `called from:` lists by name; when a
+     XML escapes) plus a `prints:` line quoting the readable text its
+     `fmt { }` blocks emit and `calls:` / `called from:` lists by name; when a
      neutral `sub_` function shows **exactly one** kind of effect it is
      renamed `draw_XXXX` / `key_XXXX` / `snd_XXXX` (the address stays in the
      name);
@@ -401,13 +442,16 @@ upward, the console OS at `>0000–5FFF`.
      block/duration summary, and each chunk lists the functions that `move`
      from it.
 5. **Verification** — every decoded instruction is re-encoded and compared
-   against the original bytes; any mismatch (non-canonical encodings, opcodes
-   without GSL spellings such as `IO`/`COINC`/`SWGR`/`XGPL`, `FMT` blocks,
-   GRAM moves) is emitted as raw `asm { BYTE … }` / `data` with a comment
-   naming the decoded form. Finally the **whole generated file is compiled
-   and byte-compared** against the input payload; the `.gsl` is written only
-   if it reproduces the input exactly, and its header comment records the
-   verdict and coverage statistics.
+   against the original bytes; `FMT` blocks re-encode through the same rules
+   as the `fmt { }` compiler (structural loop-backs, canonical GAS operands)
+   and become `fmt { }` statements only on byte-equality. Any mismatch
+   (non-canonical encodings, opcodes without GSL spellings such as
+   `IO`/`COINC`/`SWGR`/`XGPL`, GRAM moves, perverse `FMT` loop-backs) is
+   emitted as raw `asm { BYTE … }` / `data` with a comment naming the decoded
+   form. Finally the **whole generated file is compiled and byte-compared**
+   against the input payload; the `.gsl` is written only if it reproduces the
+   input exactly, and its header comment records the verdict and coverage
+   statistics.
 
 The result: **decompiled output is functionally equivalent by construction**
 (identical bytes ⇒ identical behavior), regardless of how much of the image
@@ -415,7 +459,7 @@ the tracer understood. Discovery quality affects only *readability* — how much
 appears as statements rather than data. Metadata comments carry the
 decompilation record: input provenance, per-function origin (which header,
 which callers), data cross-references from `move` sources, ASCII gutters, and
-decoded `FMT` listings.
+decoded listings for the rare `FMT` blocks that stay raw.
 
 Limits worth knowing: bytes consumed via `FETCH` after a `CALL` are untracked
 (they tile as code — harmless, occasionally ugly); banked/duplicate GROM pages
@@ -448,7 +492,5 @@ via `libre99-core`'s `third_party` gate).
   parameters, or recursion (the machine has none of these).
 * No floating point, strings-as-values, or BASIC linkage beyond the raw
   `parse`/`cont`/`exec`/`rtnb` opcodes.
-* No `FMT` statement syntax — format blocks round-trip as raw bytes with
-  decoded comments. A structured `fmt { }` sub-language is a natural v2 item.
 * The compiler never *chooses* between equivalent encodings: what you write is
   the opcode you get (§6.1). Optimization is the author's job.

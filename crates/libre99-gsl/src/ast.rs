@@ -227,6 +227,34 @@ pub enum MoveCount {
     Place(Place),
 }
 
+/// One sub-op inside an `fmt { }` block — GPL's FMT screen-format
+/// sub-language (`rom/RECON.md` §7), spelled as statements.
+#[derive(Debug, Clone)]
+pub enum FmtOp {
+    /// `htext("…")` / `vtext("…")` — 1..=32 inline characters.
+    Text { vertical: bool, bytes: Vec<u8> },
+    /// `hchar(count, ch)` / `vchar(count, ch)` — repeat one char 1..=32 times.
+    Chars { vertical: bool, count: Expr, ch: Expr },
+    /// `hmove(n)` / `vmove(n)` — skip the cursor 1..=32 cells.
+    Skip { vertical: bool, count: Expr },
+    /// `row(n)` / `col(n)` — absolute cursor position.
+    Row(Expr),
+    Col(Expr),
+    /// `bias(n)` / `bias(place)` — character bias, immediate or from memory.
+    Bias(Operand),
+    /// `hstr(count, place)` — print 1..=27 chars from a GAS-addressed string.
+    HStr { count: Expr, place: Place },
+    /// `repeat (n) { … }` — run the body 1..=32 times (`RPTB`…`FEND`).
+    Repeat { count: Expr, body: Vec<FmtStmt> },
+}
+
+/// One `fmt { }` sub-statement with its source line.
+#[derive(Debug, Clone)]
+pub struct FmtStmt {
+    pub line: usize,
+    pub op: FmtOp,
+}
+
 /// One statement, with its source line and any labels prefixed to it.
 #[derive(Debug, Clone)]
 pub struct Stmt {
@@ -263,6 +291,8 @@ pub enum StmtKind {
     ImmArg { which: ImmOp, arg: Expr },
     /// Inline assembler lines, spliced verbatim.
     Asm(Vec<String>),
+    /// `fmt { … }` — a GPL FMT (screen-format) block.
+    Fmt(Vec<FmtStmt>),
     /// Structured sugar (compiler-only; the decompiler emits flat forms).
     If { cond: Cond, then_: Vec<Stmt>, else_: Vec<Stmt> },
     While { cond: Cond, body: Vec<Stmt> },

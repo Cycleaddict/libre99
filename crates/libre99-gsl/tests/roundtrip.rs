@@ -147,3 +147,44 @@ fn synthetic_gpl_cartridge_survives_a_full_cycle() {
         "payload identical after decompile→recompile"
     );
 }
+
+#[test]
+fn fmt_blocks_survive_the_cycle_as_fmt_statements() {
+    // FMT round trip: author fmt { } in GSL, serialize, decompile — the block
+    // must come back as fmt statements (not raw BYTEs), with the printed text
+    // lifted into the function header, and recompile to the same payload.
+    let src = r#"
+        format ctg;
+        cartridge "FMTDEMO";
+        origin 0x6000;
+        data hdr {
+            0xAA, 0x01, 0x01, 0x00,                  // valid, version, programs, reserved
+            word 0, word 0x6010, word 0, word 0,     // power-up, programs, DSR, subprograms
+            word 0,                                  // interrupt list
+            0x00, 0x00,                              // pad to the list node at >6010
+            word 0, word 0x6020, 0x07, "FMTDEMO",    // node: next, entry, name
+        }
+        fn main() @ 0x6020 {
+            fmt {
+                col(4); row(2);
+                htext("HELLO");
+                repeat (3) { hchar(10, ' '); hmove(22); }
+            }
+            exit();
+        }
+    "#;
+    let c = compile(src).expect("compile");
+    let ctg = write_output(&c, OutFormat::Ctg).expect("write");
+    let d = decompile(&ctg, &Options { input_name: "fmt.ctg".into(), ..Default::default() })
+        .expect("decompile");
+    assert!(d.text.contains("fmt {"), "fmt recovered:\n{}", d.text);
+    assert!(d.text.contains("htext(\"HELLO\");"), "text recovered:\n{}", d.text);
+    assert!(d.text.contains("repeat (3) {"), "loop recovered:\n{}", d.text);
+    assert!(d.text.contains("// prints: \"HELLO\""), "prints header:\n{}", d.text);
+    let c2 = compile(&d.text).expect("recompile");
+    assert_eq!(
+        payload_of(&c2, OutFormat::Ctg).unwrap(),
+        payload_of(&c, OutFormat::Ctg).unwrap(),
+        "payload identical after decompile→recompile"
+    );
+}

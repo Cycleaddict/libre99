@@ -94,7 +94,8 @@ fn tunnels_of_doom_round_trips_byte_identically() {
     assert_eq!(d.payload.grom.len(), 5, "ToD is five GROM pages");
     assert!(d.text.contains("fn prog_tunnels_of_doom()"), "program entry named");
     assert!(d.stats.stmt_instrs > 3000, "real code coverage: {:?}", d.stats);
-    assert!(d.text.contains("FMT block"), "FMT blocks annotated");
+    assert!(d.text.contains("fmt {"), "FMT blocks decompile to fmt statements");
+    assert!(d.text.contains("// prints: "), "printed text lifted into fn headers");
 }
 
 /// Every `.ctg` in the corpus must round-trip byte-identically. Ignored by

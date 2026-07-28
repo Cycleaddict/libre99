@@ -107,7 +107,8 @@ pub const RESERVED: &[&str] = &[
     "rom", "byte", "word", "cpu", "vdp", "grom", "gram", "vreg", "goto", "if", "else", "while",
     "return", "returnc", "test", "cond", "move", "call", "swap", "rotr", "scan", "exit", "cont",
     "exec", "rtnb", "rtgr", "back", "all", "rand", "parse", "xml", "inct", "dect", "abs", "neg",
-    "inv", "push", "fetch", "case", "carry", "ovf", "gt", "h",
+    "inv", "push", "fetch", "case", "carry", "ovf", "gt", "h", "fmt", "htext", "vtext", "hchar",
+    "vchar", "hmove", "vmove", "row", "col", "bias", "hstr", "repeat",
 ];
 
 struct Parser {
@@ -450,6 +451,98 @@ impl Parser {
         self.block_body()
     }
 
+    // ---- fmt { } — the FMT screen-format sub-language -----------------------
+
+    /// Parse `fmt { … }` sub-statements until the closing `}` (consumed).
+    fn fmt_body(&mut self) -> Result<Vec<FmtStmt>, ParseError> {
+        let mut out = Vec::new();
+        loop {
+            if self.eat_p("}") {
+                return Ok(out);
+            }
+            let line = self.line();
+            let op = self.fmt_op()?;
+            out.push(FmtStmt { line, op });
+        }
+    }
+
+    fn fmt_op(&mut self) -> Result<FmtOp, ParseError> {
+        if self.eat_ident("repeat") {
+            self.expect_p("(")?;
+            let count = self.expr()?;
+            self.expect_p(")")?;
+            self.expect_p("{")?;
+            let body = self.fmt_body()?;
+            return Ok(FmtOp::Repeat { count, body });
+        }
+        for (name, vertical) in [("htext", false), ("vtext", true)] {
+            if self.eat_ident(name) {
+                self.expect_p("(")?;
+                let bytes = match self.cur().clone() {
+                    Tok::Str(b) => {
+                        self.bump();
+                        b
+                    }
+                    other => {
+                        return self.err(format!(
+                            "{name} takes a string literal, found {}",
+                            describe(&other)
+                        ))
+                    }
+                };
+                self.expect_p(")")?;
+                self.expect_p(";")?;
+                return Ok(FmtOp::Text { vertical, bytes });
+            }
+        }
+        for (name, vertical) in [("hchar", false), ("vchar", true)] {
+            if self.eat_ident(name) {
+                self.expect_p("(")?;
+                let count = self.expr()?;
+                self.expect_p(",")?;
+                let ch = self.expr()?;
+                self.expect_p(")")?;
+                self.expect_p(";")?;
+                return Ok(FmtOp::Chars { vertical, count, ch });
+            }
+        }
+        for (name, vertical) in [("hmove", false), ("vmove", true)] {
+            if self.eat_ident(name) {
+                self.expect_p("(")?;
+                let count = self.expr()?;
+                self.expect_p(")")?;
+                self.expect_p(";")?;
+                return Ok(FmtOp::Skip { vertical, count });
+            }
+        }
+        for row in [true, false] {
+            if self.eat_ident(if row { "row" } else { "col" }) {
+                self.expect_p("(")?;
+                let e = self.expr()?;
+                self.expect_p(")")?;
+                self.expect_p(";")?;
+                return Ok(if row { FmtOp::Row(e) } else { FmtOp::Col(e) });
+            }
+        }
+        if self.eat_ident("bias") {
+            self.expect_p("(")?;
+            let arg = self.operand()?;
+            self.expect_p(")")?;
+            self.expect_p(";")?;
+            return Ok(FmtOp::Bias(arg));
+        }
+        if self.eat_ident("hstr") {
+            self.expect_p("(")?;
+            let count = self.expr()?;
+            self.expect_p(",")?;
+            let place = self.place()?;
+            self.expect_p(")")?;
+            self.expect_p(";")?;
+            return Ok(FmtOp::HStr { count, place });
+        }
+        self.err(format!("expected an fmt sub-op, found {}", describe(self.cur())))
+    }
+
     fn stmt_kind(&mut self) -> Result<StmtKind, ParseError> {
         // asm block as a statement.
         if self.is_ident("asm") {
@@ -458,6 +551,10 @@ impl Parser {
                 Tok::AsmBody(lines) => Ok(StmtKind::Asm(lines)),
                 _ => self.err("asm must open a { } block"),
             };
+        }
+        if self.eat_ident("fmt") {
+            self.expect_p("{")?;
+            return Ok(StmtKind::Fmt(self.fmt_body()?));
         }
         if self.eat_ident("goto") {
             let t = self.target()?;

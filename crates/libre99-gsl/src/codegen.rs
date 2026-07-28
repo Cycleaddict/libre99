@@ -665,6 +665,7 @@ impl Gen {
                 }
                 Ok(())
             }
+            StmtKind::Fmt(body) => self.fmt_block(line, body),
             StmtKind::Assign { dst, op, src } => self.assign(line, dst, *op, src),
             StmtKind::Inc(p) => self.one_op(line, "INC", p),
             StmtKind::Dec(p) => self.one_op(line, "DEC", p),
@@ -905,6 +906,131 @@ impl Gen {
             return Err("mixed byte/word operands (alias a var or add a byte()/word() cast)".into());
         }
         Ok(self.merge_width(line, claims))
+    }
+
+    // ---- fmt { } blocks -----------------------------------------------------
+
+    /// Lower `fmt { … }` to raw FMT bytes. The sub-language is not part of
+    /// the assembler's grammar, so this uses the byte path (`BYTE` lines);
+    /// each `repeat` loop-back word is an assembler label (`DATA _GFn`), so
+    /// it is resolved by the assembler like any other address.
+    fn fmt_block(&mut self, line: usize, body: &[FmtStmt]) -> Result<(), String> {
+        self.emit(line, "        BYTE >08".into());
+        self.fmt_ops(body);
+        self.emit(line, "        BYTE >FB".into());
+        Ok(())
+    }
+
+    fn fmt_ops(&mut self, body: &[FmtStmt]) {
+        for s in body {
+            if let Err(m) = self.fmt_op(s) {
+                self.error(s.line, m);
+            }
+        }
+    }
+
+    /// An FMT count encodes as `n-1` in the low five bits.
+    fn fmt_count(&self, e: &Expr, max: i64) -> Result<u8, String> {
+        let v = self.eval(e)?;
+        if (1..=max).contains(&v) {
+            Ok((v - 1) as u8)
+        } else {
+            Err(format!("FMT count {v} is out of range (1..={max})"))
+        }
+    }
+
+    fn fmt_byte(&self, e: &Expr, what: &str) -> Result<u8, String> {
+        let v = self.eval(e)?;
+        if (-128..=255).contains(&v) {
+            Ok(v as u8)
+        } else {
+            Err(format!("{what} value {v} does not fit a byte"))
+        }
+    }
+
+    fn fmt_gas_bytes(&self, place: &Place) -> Result<Vec<u8>, String> {
+        let r = self.resolve_place(place)?;
+        let gop = self.place_gop(&r)?;
+        let mut bytes = Vec::new();
+        libre99_gpl::operand::encode_gas(&gop, &mut bytes).map_err(|e| e.to_string())?;
+        Ok(bytes)
+    }
+
+    fn fmt_op(&mut self, s: &FmtStmt) -> Result<(), String> {
+        let line = s.line;
+        match &s.op {
+            FmtOp::Text { vertical, bytes } => {
+                if bytes.is_empty() || bytes.len() > 32 {
+                    return Err(format!(
+                        "htext/vtext take 1..=32 characters, got {}",
+                        bytes.len()
+                    ));
+                }
+                let mut out = vec![if *vertical { 0x20 } else { 0x00 } | (bytes.len() - 1) as u8];
+                out.extend_from_slice(bytes);
+                self.emit_bytes(line, &out, "fmt text");
+                Ok(())
+            }
+            FmtOp::Chars { vertical, count, ch } => {
+                let c = self.fmt_count(count, 32)?;
+                let v = self.fmt_byte(ch, "char")?;
+                self.emit_bytes(line, &[if *vertical { 0x60 } else { 0x40 } | c, v], "fmt char");
+                Ok(())
+            }
+            FmtOp::Skip { vertical, count } => {
+                let c = self.fmt_count(count, 32)?;
+                self.emit_bytes(line, &[if *vertical { 0xA0 } else { 0x80 } | c], "fmt move");
+                Ok(())
+            }
+            FmtOp::Row(e) => {
+                let v = self.fmt_byte(e, "row")?;
+                self.emit_bytes(line, &[0xFE, v], "fmt row");
+                Ok(())
+            }
+            FmtOp::Col(e) => {
+                let v = self.fmt_byte(e, "col")?;
+                self.emit_bytes(line, &[0xFF, v], "fmt col");
+                Ok(())
+            }
+            FmtOp::Bias(arg) => {
+                // A declared var is the FD (from-memory) form; anything else
+                // is the FC immediate form (same bare-name rule as §4).
+                let imm = match arg {
+                    Operand::Imm(i) => Some(i.expr.clone()),
+                    Operand::Place(p) => self.bare_symbol(p),
+                };
+                match (imm, arg) {
+                    (Some(e), _) => {
+                        let v = self.fmt_byte(&e, "bias")?;
+                        self.emit_bytes(line, &[0xFC, v], "fmt bias");
+                    }
+                    (None, Operand::Place(p)) => {
+                        let mut out = vec![0xFD];
+                        out.extend(self.fmt_gas_bytes(p)?);
+                        self.emit_bytes(line, &out, "fmt bias from memory");
+                    }
+                    (None, Operand::Imm(_)) => unreachable!(),
+                }
+                Ok(())
+            }
+            FmtOp::HStr { count, place } => {
+                let c = self.fmt_count(count, 27)?;
+                let mut out = vec![0xE0 | c];
+                out.extend(self.fmt_gas_bytes(place)?);
+                self.emit_bytes(line, &out, "fmt string from memory");
+                Ok(())
+            }
+            FmtOp::Repeat { count, body } => {
+                let c = self.fmt_count(count, 32)?;
+                let lbl = self.fresh_label("_GF");
+                self.emit_bytes(line, &[0xC0 | c], "fmt repeat");
+                self.emit(line, lbl.clone());
+                self.fmt_ops(body);
+                self.emit(line, "        BYTE >FB".into());
+                self.emit(line, format!("        DATA {lbl}"));
+                Ok(())
+            }
+        }
     }
 
     /// Emit a byte-path instruction as a `BYTE` line.

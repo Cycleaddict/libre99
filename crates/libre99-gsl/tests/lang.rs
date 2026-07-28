@@ -283,3 +283,42 @@ fn grom24_output_matches_the_system_image_shape() {
     assert_eq!(bytes.len(), libre99_gpl::GROM_IMAGE_LEN);
     assert_eq!(bytes[0x20], 0x0B);
 }
+
+#[test]
+fn fmt_blocks_encode_the_screen_sublanguage() {
+    // fmt { col(13); row(3); htext("AB"); hchar(3, ' '); repeat (2) { hmove(4); } }
+    // 08 | FF 0D | FE 03 | 01 41 42 | 42 20 | C1 | 83 | FB 00 3B | FB
+    // (the repeat loop-back word points at the body, >003B).
+    let img = image(
+        "origin 0x0000;
+         fn f() @ 0x0030 {
+             fmt {
+                 col(13); row(3);
+                 htext(\"AB\");
+                 hchar(3, ' ');
+                 repeat (2) { hmove(4); }
+             }
+         }",
+    );
+    assert_eq!(
+        at(&img, 0x30, 16),
+        [
+            0x08, 0xFF, 0x0D, 0xFE, 0x03, 0x01, 0x41, 0x42, 0x42, 0x20, 0xC1, 0x83, 0xFB, 0x00,
+            0x3B, 0xFB
+        ]
+    );
+}
+
+#[test]
+fn fmt_gas_forms_encode_via_operands() {
+    // bias(imm) is FC; bias(var) / hstr(n, var) carry GAS operands
+    // (short direct CPU form: >8350 -> >50).
+    let img = image(
+        "origin 0x0000;
+         var bv: byte @ cpu[0x8350];
+         fn f() @ 0x0030 {
+             fmt { bias(0x60); bias(bv); hstr(2, bv); }
+         }",
+    );
+    assert_eq!(at(&img, 0x30, 8), [0x08, 0xFC, 0x60, 0xFD, 0x50, 0xE1, 0x50, 0xFB]);
+}

@@ -52,15 +52,63 @@
 //! tiles the bytes *after* an FMT block correctly and can annotate the
 //! sub-ops.
 
-use libre99_gpl::operand::decode_gas;
+use libre99_gpl::disasm::format_operand;
+use libre99_gpl::operand::{decode_gas, encode_gas, Operand as GOp};
+
+/// One decoded FMT sub-op (counts are the actual 1-based counts; the wire
+/// encoding is `count-1` in the low five bits).
+#[derive(Debug, Clone)]
+pub enum Ir {
+    Text { vertical: bool, bytes: Vec<u8> },
+    Chars { vertical: bool, count: u8, ch: u8 },
+    Skip { vertical: bool, count: u8 },
+    Row(u8),
+    Col(u8),
+    BiasImm(u8),
+    BiasGas(GOp),
+    HStr { count: u8, gas: GOp },
+    /// Opens a repeat loop of `count` passes.
+    Rptb { count: u8 },
+    /// Closes the innermost loop; `back` is the recorded loop-back address.
+    FendLoop { back: u16 },
+    /// Terminates the block (always the last op).
+    Fend,
+}
+
+/// A comment-friendly one-liner for a sub-op (the pre-`fmt { }` notation,
+/// still used for blocks that fall back to raw bytes).
+pub fn describe(ir: &Ir) -> String {
+    match ir {
+        Ir::Text { vertical, bytes } => {
+            let text: String = bytes
+                .iter()
+                .map(|&c| if (0x20..0x7F).contains(&c) { c as char } else { '.' })
+                .collect();
+            format!("{} {} \"{text}\"", if *vertical { "VTEX" } else { "HTEX" }, bytes.len())
+        }
+        Ir::Chars { vertical, count, ch } => {
+            format!("{} {count} x >{ch:02X}", if *vertical { "VCHA" } else { "HCHA" })
+        }
+        Ir::Skip { vertical, count } => {
+            format!("{} {count}", if *vertical { "VMOVE" } else { "HMOVE" })
+        }
+        Ir::Row(v) => format!("ROW {v}"),
+        Ir::Col(v) => format!("COL {v}"),
+        Ir::BiasImm(v) => format!("BIAS >{v:02X}"),
+        Ir::BiasGas(g) => format!("BIAS from {}", format_operand(g)),
+        Ir::HStr { count, gas } => format!("HSTR {count} chars from {}", format_operand(gas)),
+        Ir::Rptb { count } => format!("RPTB {count} passes {{"),
+        Ir::FendLoop { back } => format!("}} FEND (loop back >{back:04X})"),
+        Ir::Fend => "FEND".into(),
+    }
+}
 
 /// A scanned FMT block: total length (including the `>08` opcode and the
-/// terminating `FEND`) and a description of each sub-op for comments.
+/// terminating `FEND`) and each sub-op with its address.
 #[derive(Debug, Clone)]
 pub struct FmtBlock {
     pub len: usize,
-    /// `(address, description)` per sub-op.
-    pub ops: Vec<(u16, String)>,
+    pub ops: Vec<(u16, Ir)>,
 }
 
 /// Scan the FMT block whose `>08` opcode is at `addr` in the 64 KiB GROM
@@ -82,38 +130,27 @@ pub fn scan(img: &[u8], addr: u16) -> Option<FmtBlock> {
         match b {
             0x00..=0x3F => {
                 let n = (b & 0x1F) as usize + 1;
-                let dir = if b < 0x20 { "HTEX" } else { "VTEX" };
-                let text: String = img
-                    .get(i + 1..i + 1 + n)?
-                    .iter()
-                    .map(|&c| if (0x20..0x7F).contains(&c) { c as char } else { '.' })
-                    .collect();
-                ops.push((at, format!("{dir} {n} \"{text}\"")));
+                let bytes = img.get(i + 1..i + 1 + n)?.to_vec();
+                ops.push((at, Ir::Text { vertical: b >= 0x20, bytes }));
                 i += 1 + n;
             }
             0x40..=0x7F => {
-                let n = (b & 0x1F) as usize + 1;
-                let dir = if b < 0x60 { "HCHA" } else { "VCHA" };
                 let ch = *img.get(i + 1)?;
-                ops.push((at, format!("{dir} {n} x >{ch:02X}")));
+                ops.push((at, Ir::Chars { vertical: b >= 0x60, count: (b & 0x1F) + 1, ch }));
                 i += 2;
             }
             0x80..=0xBF => {
-                let n = (b & 0x1F) as usize + 1;
-                let dir = if b < 0xA0 { "HMOVE" } else { "VMOVE" };
-                ops.push((at, format!("{dir} {n}")));
+                ops.push((at, Ir::Skip { vertical: b >= 0xA0, count: (b & 0x1F) + 1 }));
                 i += 1;
             }
             0xC0..=0xDF => {
-                let n = (b & 0x1F) as usize + 1;
                 depth += 1;
-                ops.push((at, format!("RPTB {n} passes {{")));
+                ops.push((at, Ir::Rptb { count: (b & 0x1F) + 1 }));
                 i += 1;
             }
             0xE0..=0xFA => {
-                let n = (b & 0x1F) as usize + 1;
-                let (_, glen) = decode_gas(img, i + 1).ok()?;
-                ops.push((at, format!("HSTR {n} chars from a GAS operand")));
+                let (gas, glen) = decode_gas(img, i + 1).ok()?;
+                ops.push((at, Ir::HStr { count: (b & 0x1F) + 1, gas }));
                 i += 1 + glen;
             }
             0xFB => {
@@ -121,36 +158,87 @@ pub fn scan(img: &[u8], addr: u16) -> Option<FmtBlock> {
                     depth -= 1;
                     let hi = *img.get(i + 1)? as u16;
                     let lo = *img.get(i + 2)? as u16;
-                    ops.push((at, format!("}} FEND (loop back >{:04X})", (hi << 8) | lo)));
+                    ops.push((at, Ir::FendLoop { back: (hi << 8) | lo }));
                     i += 3;
                 } else {
-                    ops.push((at, "FEND".into()));
+                    ops.push((at, Ir::Fend));
                     i += 1;
                     return Some(FmtBlock { len: i - start, ops });
                 }
             }
             0xFC => {
                 let v = *img.get(i + 1)?;
-                ops.push((at, format!("BIAS >{v:02X}")));
+                ops.push((at, Ir::BiasImm(v)));
                 i += 2;
             }
             0xFD => {
-                let (_, glen) = decode_gas(img, i + 1).ok()?;
-                ops.push((at, "BIAS from a GAS operand".into()));
+                let (gas, glen) = decode_gas(img, i + 1).ok()?;
+                ops.push((at, Ir::BiasGas(gas)));
                 i += 1 + glen;
             }
             0xFE => {
                 let v = *img.get(i + 1)?;
-                ops.push((at, format!("ROW {v}")));
+                ops.push((at, Ir::Row(v)));
                 i += 2;
             }
             0xFF => {
                 let v = *img.get(i + 1)?;
-                ops.push((at, format!("COL {v}")));
+                ops.push((at, Ir::Col(v)));
                 i += 2;
             }
         }
     }
+}
+
+/// Re-encode a scanned block the way the `fmt { }` compiler would: loop-back
+/// words are derived from the block structure and GAS operands re-encode
+/// canonically. Byte-equality with the original bytes proves the block can
+/// be emitted as `fmt { }` statements and recompile identically.
+pub fn reencode(block: &FmtBlock, start: u16) -> Option<Vec<u8>> {
+    let mut out = vec![0x08u8];
+    let mut loops: Vec<u16> = Vec::new();
+    for (_, ir) in &block.ops {
+        let at = start.wrapping_add(out.len() as u16);
+        match ir {
+            Ir::Text { vertical, bytes } => {
+                if bytes.is_empty() || bytes.len() > 32 {
+                    return None;
+                }
+                out.push(if *vertical { 0x20 } else { 0x00 } | (bytes.len() - 1) as u8);
+                out.extend_from_slice(bytes);
+            }
+            Ir::Chars { vertical, count, ch } => {
+                out.push(if *vertical { 0x60 } else { 0x40 } | (count - 1));
+                out.push(*ch);
+            }
+            Ir::Skip { vertical, count } => {
+                out.push(if *vertical { 0xA0 } else { 0x80 } | (count - 1));
+            }
+            Ir::Row(v) => out.extend_from_slice(&[0xFE, *v]),
+            Ir::Col(v) => out.extend_from_slice(&[0xFF, *v]),
+            Ir::BiasImm(v) => out.extend_from_slice(&[0xFC, *v]),
+            Ir::BiasGas(g) => {
+                out.push(0xFD);
+                encode_gas(g, &mut out).ok()?;
+            }
+            Ir::HStr { count, gas } => {
+                out.push(0xE0 | (count - 1));
+                encode_gas(gas, &mut out).ok()?;
+            }
+            Ir::Rptb { count } => {
+                out.push(0xC0 | (count - 1));
+                loops.push(at.wrapping_add(1));
+            }
+            Ir::FendLoop { .. } => {
+                let back = loops.pop()?;
+                out.push(0xFB);
+                out.push((back >> 8) as u8);
+                out.push(back as u8);
+            }
+            Ir::Fend => out.push(0xFB),
+        }
+    }
+    Some(out)
 }
 
 #[cfg(test)]
@@ -171,7 +259,20 @@ mod tests {
         let img = [0x08, 0xC0, 0x80, 0xFB, 0x12, 0x34, 0xFB];
         let b = scan(&img, 0).unwrap();
         assert_eq!(b.len, 7);
-        assert!(b.ops.iter().any(|(_, d)| d.contains(">1234")));
+        assert!(b.ops.iter().any(|(_, d)| describe(d).contains(">1234")));
+    }
+
+    #[test]
+    fn reencode_derives_structural_loopbacks() {
+        // The recorded loop-back matches the structure: byte-identical.
+        let good = [0x08, 0xC0, 0x80, 0xFB, 0x00, 0x02, 0xFB];
+        let b = scan(&good, 0).unwrap();
+        assert_eq!(reencode(&b, 0).unwrap(), good);
+        // A perverse recorded loop-back re-encodes structurally — different
+        // bytes, so the decompiler will keep this block as raw BYTEs.
+        let odd = [0x08, 0xC0, 0x80, 0xFB, 0x12, 0x34, 0xFB];
+        let b = scan(&odd, 0).unwrap();
+        assert_ne!(reencode(&b, 0).unwrap(), odd);
     }
 
     #[test]
