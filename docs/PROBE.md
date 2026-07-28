@@ -192,9 +192,9 @@ the machine exactly, and a `save` at the end makes the next run instant.
 It executes no AI logic and never modifies the host beyond the files you name
 in `shot`/`save`/`trace save`/`cover save` commands. It is the mechanical
 layer only — the annotation workflow that sits *on top of* it (the
-`/annotate` Claude Code skill, which plays a cartridge through this shell and
-enriches its GSL decompilation with the evidence) is documented in
-[GSL.md](GSL.md) §13 and is always optional.
+`/annotate` Claude Code skill, which compiles a GSL decompilation, plays the
+result through this shell, and enriches the source with the evidence) is
+documented in [GSL.md](GSL.md) §13 and is always optional.
 
 ## Where it lives
 

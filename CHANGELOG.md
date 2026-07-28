@@ -66,15 +66,20 @@ clean-room firmware it embeds, and TI PYTHON's banner.
 - **`libre99gsl verify` + the `/annotate` skill** — runtime-informed
   annotation of decompilations (docs/GSL.md §13). `verify <in.gsl>
   <against.ctg|.bin>` compiles a (hand- or AI-edited) decompilation and
-  byte-compares its payload against the original image — the name-blind
+  byte-compares its payload against a reference image — the name-blind
   safety gate that makes editing a decompilation provably unable to change
   its bytes (pinned by a corpus test). On top of it, the repository's first
   checked-in Claude Code skill (`.claude/skills/annotate/SKILL.md`) drives
-  the whole workflow: play the cartridge headlessly through `libre99probe`,
-  correlate execution traces/coverage with what the screen showed, rename
-  and comment with recorded evidence (`observed:`/`likely:`), and maintain
-  a cumulative `EXPLORATION NOTES` block (replayable session scripts,
-  coverage, renames-with-evidence, unreached code, next-pass hints).
+  the whole workflow **interactively and self-contained**: the `.gsl` is
+  the single source of truth — the session compiles it into a baseline
+  image (no original cartridge needed; byte-identity is transitive from
+  the decompile), plays that image headlessly through `libre99probe`,
+  correlates execution traces/coverage with what the screen showed, renames
+  and comments with recorded evidence (`observed:`/`likely:`), verifies
+  after every batch, and reports back for the user to steer the next pass
+  in conversation. Durable context and every session land in a cumulative
+  `EXPLORATION NOTES` block (replayable keystroke scripts, coverage,
+  renames-with-evidence, unreached code, what would unlock more).
   `.gitignore` now tracks `.claude/skills/` while keeping local Claude
   state untracked; everything continues to work without AI.
 - The `Esc`/`F1` **help overlay was redesigned** to the approved four-tab

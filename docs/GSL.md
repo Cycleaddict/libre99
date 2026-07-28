@@ -510,38 +510,48 @@ Static annotation (§10.4) stops where the bytes stop telling: `sub_C41E` is
 honest but blind. The repository ships a **Claude Code skill** —
 [`.claude/skills/annotate/SKILL.md`](../.claude/skills/annotate/SKILL.md),
 checked in and version-controlled like any other file — that layers **runtime
-evidence** on top. An AI session plays the cartridge headlessly through
-`libre99probe` ([PROBE.md](PROBE.md)): it reads the screen, presses keys,
-records GROM fetch traces and execution-coverage bitmaps, and correlates
-*which functions ran while which screens showed*. It then edits the `.gsl` —
-better names, `observed:`/`likely:` comments — and maintains one
-`EXPLORATION NOTES` block at the end of the file recording each session as a
-replayable keystroke script, the coverage numbers, every rename with its
-evidence, what couldn't be reached and why, and suggested hints for the next
-pass.
+evidence** on top, interactively. The `.gsl` is the single source of truth:
+the session **compiles the decompilation itself** and plays the result
+headlessly through `libre99probe` ([PROBE.md](PROBE.md)) — the original
+cartridge image is never needed, because the decompiler proved byte-identity
+when it produced the file and every edit preserves it. The session reads the
+screen, presses keys, records GROM fetch traces and execution-coverage
+bitmaps, and correlates *which functions ran while which screens showed*; it
+then edits the `.gsl` — better names, `observed:`/`likely:` comments — and
+maintains one `EXPLORATION NOTES` block at the end of the file recording the
+user's durable context, each session as a replayable keystroke script, the
+coverage numbers, every rename with its evidence, what couldn't be reached
+and why, and what would unlock more.
 
 To use it: open the repository in [Claude Code](https://claude.com/claude-code)
-and run
+and start the conversation with the file and whatever you know —
 
 ```text
-/annotate <decompilation.gsl> <cartridge.ctg> [hints.txt]
+/annotate /path/to/game.gsl — this is an RPG; the data disk is at
+/path/to/data.dsk; focus on the combat engine first
 ```
 
-where the hints file is optional free text (where a companion data disk
-lives, what the program is, what to focus on). Iterate: re-run with new hints
-until the coverage numbers plateau — passes are cumulative.
+Hints live in the conversation, not in files: the session runs a full pass,
+reports back (coverage and its delta, renames with evidence, discoveries,
+what stayed unreached and what hint or media would unlock it), and you reply
+with more direction for the next pass. Iterate until the coverage numbers
+plateau — passes are cumulative, and durable facts you supply are recorded
+in the notes block so future sessions inherit them.
 
 Three properties keep this safe and strictly optional:
 
-- **`libre99gsl verify` gates every edit** (§11): the skill runs it after
-  each editing batch, and since the byte comparison is name-blind, an
-  annotation pass can produce a bad name but never a bad byte. (The
-  guarantee is pinned by a corpus test:
+- **`libre99gsl verify` gates every edit** (§11): before the first edit the
+  session compiles the pristine file into a baseline image, and after each
+  editing batch verifies against it. The byte comparison is name-blind, so
+  an annotation pass can produce a bad name but never a bad byte — and
+  identity is transitive (decompiler → pass 1 → pass 2 → …), so the chain
+  back to the original cartridge never breaks. (Pinned by a corpus test:
   `renames_and_comments_cannot_change_the_payload`.)
 - **Everything works without AI.** The decompiler, `verify`, and the probe
   are plain tools; the skill is an optional layer for Claude Code users, and
   the "prompt engineering" lives in one reviewed markdown file that improves
   through ordinary commits.
 - **Commercial-cartridge artifacts stay out of the repository** — the
-  enriched `.gsl`, evidence files, and hints for third-party titles live
-  outside the tree, like every other derivative of `third-party/` media.
+  enriched `.gsl`, its compiled baseline, and evidence files for third-party
+  titles live outside the tree, like every other derivative of
+  `third-party/` media.
