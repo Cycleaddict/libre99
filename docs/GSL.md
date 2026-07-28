@@ -370,9 +370,37 @@ upward, the console OS at `>0000–5FFF`.
    becomes `data` (all-zero spans are elided). `CALL` targets and header
    entries become `fn`s — named from the header program names (`prog_*`) or
    their address (`sub_6123`); branch targets become labels (`L_6134`).
-   Scratchpad/VDP cells become vars (`b_8375`, `w_8340`, `vb_0300`, …) with
-   well-known cells annotated from the recon dossiers.
-4. **Verification** — every decoded instruction is re-encoded and compared
+   Scratchpad/VDP cells become vars (`b_833F`, `w_8340`, `vb_0300`, …).
+4. **Semantic annotation** — advisory analysis layered on top (names and
+   comments only; the addresses in every declaration remain the ground truth):
+   - vars at documented machine cells take their standard names —
+     `key_code` (`>8375`), `kscan_mode`, `joy_x`/`joy_y`, `gpl_status`,
+     `vdp_timer`, `snd_list_ptr`, `rand_seed`, `gpl_r0`…`gpl_r15`, … — with
+     the cell's meaning as the declaration comment (sourced from the recon
+     dossiers under `original-content/system-roms/`);
+   - VDP vars are annotated with the table they land in (screen row/col,
+     sprite attribute list, color table, pattern-table char), using the
+     console-default layout refined by any literal VDP-register loads the
+     code performs;
+   - each `fn` gets a header with its observed effects (formats screen text,
+     writes VDP/GRAM, reads keyboard/joystick, drives sound, uses random,
+     XML escapes) plus `calls:` / `called from:` lists by name; when a
+     neutral `sub_` function shows **exactly one** kind of effect it is
+     renamed `draw_XXXX` / `key_XXXX` / `snd_XXXX` (the address stays in the
+     name);
+   - statements get trailing notes where the machine contract says more than
+     the spelling: `xml(n)` names the console ROM routine or vector it
+     dispatches to, `move(vreg(n), …)` names the VDP register and shows the
+     literal value loaded, sound-list stores to `>83CC` are flagged, the
+     `>D0` sprite-list terminator is called out, branches back to a `scan()`
+     are marked as scan loops, and literal `move` sources show `d_XXXX+off`
+     plus an ASCII preview when the bytes are text;
+   - `data` blocks decode what the code told us about them: printable runs
+     become string literals, bytes uploaded to a pattern table render as
+     8×8 pixel-art comment bands above their rows, sound lists get a
+     block/duration summary, and each chunk lists the functions that `move`
+     from it.
+5. **Verification** — every decoded instruction is re-encoded and compared
    against the original bytes; any mismatch (non-canonical encodings, opcodes
    without GSL spellings such as `IO`/`COINC`/`SWGR`/`XGPL`, `FMT` blocks,
    GRAM moves) is emitted as raw `asm { BYTE … }` / `data` with a comment

@@ -21,6 +21,19 @@ clean-room firmware it embeds, and TI PYTHON's banner.
   (`crates/libre99-gsl/tests/`, incl. an `--ignored` full-corpus sweep). The
   GPL assembler grew `assemble_sized` so cartridge GROM space (`>6000+`) can
   be assembled. `assembler/ASSEMBLER.md` moved to `docs/ASSEMBLER.md`.
+- **GSL decompiler: semantic annotation** (docs/GSL.md §10.4). Advisory
+  analysis layered over the verified output — names and comments only, with
+  every address kept in the declarations: documented scratchpad cells become
+  named vars (`key_code`, `snd_list_ptr`, `gpl_status`, `gpl_r0`…`gpl_r15`,
+  …) sourced from the recon dossiers; VDP vars are annotated with the table
+  they land in (screen row/col, sprite attributes, colors, pattern chars),
+  tracking literal VDP-register loads; functions get effect-signature
+  headers plus `calls:`/`called from:` by name, and single-effect `sub_`s
+  are renamed `draw_`/`key_`/`snd_`; statements get machine-contract notes
+  (`xml(n)` dispatch targets, VDP register loads with values, sound-list
+  stores, the `>D0` sprite terminator, scan loops, `move` source previews);
+  data blocks decode strings to literals, render pattern uploads as 8×8
+  pixel-art comment bands, and summarize sound lists.
 - The `Esc`/`F1` **help overlay was redesigned** to the approved four-tab
   "quiet terminal" design (per `design_handoff_help_redesign`): solid black
   backdrop, hairline rules and whitespace instead of cards, a single cyan

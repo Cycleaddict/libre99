@@ -328,6 +328,251 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
         }
     }
 
+    // ---- semantic pre-pass -------------------------------------------------
+    // Effect signatures per function, literal VDP-register loads, pattern
+    // uploads and sound-list starts. All of it feeds names and comments only —
+    // the round-trip verification is indifferent to it.
+    #[derive(Default)]
+    struct FnInfo {
+        fmt: bool,
+        vdp: bool,
+        gram: bool,
+        key: bool,
+        snd: bool,
+        rand: bool,
+        xml: BTreeSet<u8>,
+        calls: BTreeSet<u16>,
+    }
+    let mut fninfo: BTreeMap<u16, FnInfo> = BTreeMap::new();
+    let mut vreg_loads: BTreeMap<u8, BTreeSet<u8>> = BTreeMap::new();
+    let mut vdp_uploads: Vec<(u16, u16, u16)> = Vec::new(); // (vdp dst, grom src, count)
+    let mut snd_lists: BTreeMap<u16, u16> = BTreeMap::new(); // list addr -> store site
+    {
+        let mut cur: Option<u16> = None;
+        for (&addr, tile) in &tiles {
+            if fn_starts.contains(&addr) {
+                cur = Some(addr);
+            }
+            let Some(fa) = cur else { continue };
+            let info = fninfo.entry(fa).or_default();
+            let d = match &tile.kind {
+                TKind::Fmt(_) => {
+                    info.fmt = true;
+                    continue;
+                }
+                TKind::Stmt(d) | TKind::Fallback(d, _) => d,
+            };
+            if let Flow::Call(t) = d.flow {
+                info.calls.insert(t);
+            }
+            let w = d.opcode & 1 != 0;
+            // (operand, is-written) roles per mnemonic shape.
+            let mut roles: Vec<(&GOp, bool)> = Vec::new();
+            match d.mnemonic {
+                "SCAN" => info.key = true,
+                "RAND" => info.rand = true,
+                "XML" => {
+                    if let Some(GOp::Imm8(v)) = d.operands.first() {
+                        info.xml.insert(*v);
+                    }
+                }
+                "ST" | "ADD" | "SUB" | "MUL" | "DIV" | "AND" | "OR" | "XOR" | "SLL" | "SRA"
+                | "SRL" | "SRC" => {
+                    roles.push((&d.operands[0], true));
+                    roles.push((&d.operands[1], false));
+                }
+                "EX" => {
+                    roles.push((&d.operands[0], true));
+                    roles.push((&d.operands[1], true));
+                }
+                "INC" | "DEC" | "INCT" | "DECT" | "CLR" | "ABS" | "NEG" | "INV" => {
+                    roles.push((&d.operands[0], true));
+                }
+                "CZ" | "CASE" | "FETCH" | "PUSH" => roles.push((&d.operands[0], false)),
+                "CEQ" | "CH" | "CHE" | "CGT" | "CGE" | "CLOG" => {
+                    roles.push((&d.operands[0], false));
+                    roles.push((&d.operands[1], false));
+                }
+                "MOVE" => {
+                    let bits = MoveBits::from_opcode(d.opcode);
+                    if let Some(op) = d.operands.first() {
+                        roles.push((op, false));
+                    }
+                    match d.operands.get(1) {
+                        Some(GOp::Imm8(_)) if bits.reg_dst => info.vdp = true,
+                        Some(GOp::Grom(_)) if !bits.not_grom_dst => info.gram = true,
+                        Some(op) => roles.push((op, true)),
+                        None => {}
+                    }
+                    if let Some(op) = d.operands.get(2) {
+                        roles.push((op, false));
+                    }
+                    // Literal GROM-sourced moves tell us VDP register values
+                    // and pattern-table uploads.
+                    if let (Some(GOp::Imm16(n)), Some(GOp::Grom(src))) =
+                        (d.operands.first(), d.operands.get(2))
+                    {
+                        if !bits.ram_src && !bits.cpu_held_grom_src {
+                            if bits.reg_dst {
+                                if let Some(GOp::Imm8(r)) = d.operands.get(1) {
+                                    for i in 0..(*n).min(8) {
+                                        let reg = *r as u16 + i;
+                                        if reg <= 7 && present(src.wrapping_add(i)) {
+                                            vreg_loads
+                                                .entry(reg as u8)
+                                                .or_default()
+                                                .insert(img[src.wrapping_add(i) as usize]);
+                                        }
+                                    }
+                                }
+                            } else if bits.not_grom_dst {
+                                if let Some(GOp::Vdp { addr: va, indirect: false, index: None }) =
+                                    d.operands.get(1)
+                                {
+                                    vdp_uploads.push((*va, *src, *n));
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+            // A literal word store to >83CC points the ISR at a sound list.
+            if d.mnemonic == "ST" && w {
+                if let (
+                    Some(GOp::Cpu { addr: 0x83CC, indirect: false, index: None }),
+                    Some(GOp::Imm16(v)),
+                ) = (d.operands.first(), d.operands.get(1))
+                {
+                    if present(*v) {
+                        snd_lists.entry(*v).or_insert(addr);
+                    }
+                }
+            }
+            for (op, wr) in roles {
+                match op {
+                    GOp::Cpu { addr: a, indirect: false, .. } => {
+                        let lo = *a;
+                        let hi = if w { a.wrapping_add(1) } else { *a };
+                        let hit = |s: u16, e: u16| lo <= e && hi >= s;
+                        if wr && (hit(0x83CC, 0x83CE) || hit(0x83FD, 0x83FD)) {
+                            info.snd = true;
+                        }
+                        if !wr && hit(0x8374, 0x8377) {
+                            info.key = true;
+                        }
+                        if !wr && (hit(0x8378, 0x8378) || hit(0x83C0, 0x83C1)) {
+                            info.rand = true;
+                        }
+                    }
+                    GOp::Vdp { .. } if wr => info.vdp = true,
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    // Console-default VDP layout, refined by observed literal register loads.
+    let mut screen_bases: BTreeSet<u32> = [wellknown::VDP_SCREEN_BASE as u32].into();
+    let mut pattern_bases: BTreeSet<u32> = [wellknown::VDP_PATTERN_BASE as u32].into();
+    let mut regions: Vec<(u32, u32, String)> = wellknown::VDP_DEFAULT_REGIONS
+        .iter()
+        .map(|&(s, l, what)| (s as u32, s as u32 + l as u32, what.to_string()))
+        .collect();
+    for (&r, vals) in &vreg_loads {
+        for &v in vals {
+            let v = v as u32;
+            match r {
+                2 => {
+                    screen_bases.insert((v & 0x0F) * 0x400);
+                }
+                3 => {
+                    let b = (v * 0x40) & 0x3FFF;
+                    regions.push((b, b + 0x20, format!("color table (R3=>{v:02X})")));
+                }
+                4 => {
+                    pattern_bases.insert((v & 7) * 0x800);
+                }
+                5 => {
+                    let b = (v & 0x7F) * 0x80;
+                    regions.push((b, b + 0x80, format!("sprite attribute list (R5=>{v:02X})")));
+                }
+                6 => {
+                    let b = (v & 7) * 0x800;
+                    if b != 0 {
+                        regions.push((b, b + 0x800, format!("sprite patterns (R6=>{v:02X})")));
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    let vdp_note = |addr: u16| -> Option<String> {
+        let a = addr as u32;
+        for &b in &screen_bases {
+            if (b..b + 768).contains(&a) {
+                let off = a - b;
+                return Some(format!("screen: row {}, col {}", off / 32, off % 32));
+            }
+        }
+        for (s, e, what) in &regions {
+            if (*s..*e).contains(&a) {
+                return Some(what.clone());
+            }
+        }
+        for &b in &pattern_bases {
+            if (b..b + 0x800).contains(&a) {
+                let off = a - b;
+                let ch = off / 8;
+                let printable = (0x20..0x7F).contains(&ch);
+                return Some(format!(
+                    "pattern table: char >{ch:02X}{}{}",
+                    if printable { format!(" '{}'", ch as u8 as char) } else { String::new() },
+                    if off.is_multiple_of(8) { String::new() } else { format!(", row {}", off % 8) },
+                ));
+            }
+        }
+        None
+    };
+    let in_sprite_attr = |addr: u16| {
+        regions
+            .iter()
+            .any(|(s, e, what)| (*s..*e).contains(&(addr as u32)) && what.starts_with("sprite attribute"))
+    };
+
+    // Pattern-table uploads mark their GROM source as 8x8 glyph data.
+    let mut glyphs: BTreeMap<u16, (u16, u16)> = BTreeMap::new(); // src -> (first char, count)
+    for &(dst, src, n) in &vdp_uploads {
+        let d = dst as u32;
+        for &b in &pattern_bases {
+            if d >= b && d + n as u32 <= b + 0x800 && (d - b).is_multiple_of(8) && n >= 8 {
+                glyphs.entry(src).or_insert((((d - b) / 8) as u16, n / 8));
+            }
+        }
+    }
+
+    // Heuristic function prefixes — only for neutral sub_ names, and only
+    // when the body shows exactly one kind of effect.
+    for (&fa, info) in &fninfo {
+        if let Some(name) = fn_names.get_mut(&fa) {
+            if !name.starts_with("sub_") {
+                continue;
+            }
+            let cats: Vec<&str> = [
+                (info.snd, "snd"),
+                (info.key, "key"),
+                (info.vdp || info.fmt, "draw"),
+            ]
+            .iter()
+            .filter(|(on, _)| *on)
+            .map(|(_, p)| *p)
+            .collect();
+            if let [one] = cats[..] {
+                *name = format!("{one}_{fa:04X}");
+            }
+        }
+    }
+
     // ---- data chunks (untraced bytes, zero runs elided) --------------------
     struct Chunk {
         addr: u16,
@@ -392,9 +637,145 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
         data_names: &data_names,
     };
 
+    // The enclosing function of a code address (for naming call/ref sites).
+    let fn_of = |site: u16| -> Option<&String> {
+        fn_starts.range(..=site).next_back().and_then(|f| fn_names.get(f))
+    };
+    // The data chunk containing an address, as (chunk base, offset).
+    let chunk_at = |a: u16| -> Option<(u16, usize)> {
+        let i = chunks.partition_point(|c| c.addr <= a);
+        if i == 0 {
+            return None;
+        }
+        let c = &chunks[i - 1];
+        ((a as usize) < c.addr as usize + c.len).then_some((c.addr, (a - c.addr) as usize))
+    };
+    // A short ASCII preview of GROM bytes, if they are mostly printable.
+    let preview = |a: u16, n: u16| -> Option<String> {
+        let n = (n as usize).min(24);
+        let s = a as usize;
+        if n < 4 || s + n > 0x10000 {
+            return None;
+        }
+        let bytes = &img[s..s + n];
+        let printable = bytes.iter().filter(|&&b| (0x20..0x7F).contains(&b)).count();
+        (printable * 10 >= n * 8).then(|| {
+            bytes
+                .iter()
+                .map(|&b| if (0x20..0x7F).contains(&b) { b as char } else { '.' })
+                .collect()
+        })
+    };
+    let is_scan_tile = |t: u16| {
+        matches!(tiles.get(&t), Some(Tile { kind: TKind::Stmt(sd), .. }) if sd.mnemonic == "SCAN")
+    };
+    // An advisory trailing comment for a statement, where we can say
+    // something the spelling itself does not.
+    let stmt_note = |d: &Decoded| -> Option<String> {
+        let mut parts: Vec<String> = Vec::new();
+        match d.mnemonic {
+            "XML" => {
+                if let Some(GOp::Imm8(v)) = d.operands.first() {
+                    if let Some(t) = wellknown::xml_desc(*v) {
+                        parts.push(t);
+                    }
+                }
+            }
+            "BACK" => parts.push("backdrop/border color".into()),
+            "ALL" => {
+                if let Some(GOp::Imm8(v)) = d.operands.first() {
+                    let c = if (0x20..0x7F).contains(v) {
+                        format!(" '{}'", *v as char)
+                    } else {
+                        String::new()
+                    };
+                    parts.push(format!("fill the screen with char >{v:02X}{c}"));
+                }
+            }
+            "BR" | "BS" => {
+                if let Flow::Cond(t) = d.flow {
+                    if is_scan_tile(t) {
+                        parts.push("loops back to the scan()".into());
+                    }
+                }
+            }
+            "ST" => {
+                if let (
+                    Some(GOp::Cpu { addr: 0x83CC, indirect: false, index: None }),
+                    Some(GOp::Imm16(v)),
+                ) = (d.operands.first(), d.operands.get(1))
+                {
+                    parts.push(format!("point the ISR at the sound list at >{v:04X}"));
+                }
+                if let (Some(GOp::Vdp { addr, indirect: false, .. }), Some(GOp::Imm8(0xD0))) =
+                    (d.operands.first(), d.operands.get(1))
+                {
+                    if in_sprite_attr(*addr) {
+                        parts.push(">D0 in a sprite Y = end of the sprite list".into());
+                    }
+                }
+            }
+            "MOVE" => {
+                let bits = MoveBits::from_opcode(d.opcode);
+                let count = match d.operands.first() {
+                    Some(GOp::Imm16(n)) => Some(*n),
+                    _ => None,
+                };
+                if bits.reg_dst {
+                    if let Some(GOp::Imm8(r)) = d.operands.get(1) {
+                        match count {
+                            Some(n) if n > 1 => parts
+                                .push(format!("VDP registers R{}..R{}", r, *r as u16 + n - 1)),
+                            _ => parts.push(wellknown::vdp_reg_desc(*r).to_string()),
+                        }
+                        if let (Some(GOp::Grom(src)), Some(n)) = (d.operands.get(2), count) {
+                            if !bits.ram_src && !bits.cpu_held_grom_src && n >= 1 && present(*src)
+                            {
+                                let vals: Vec<String> = (0..n.min(8))
+                                    .map(|i| format!(">{:02X}", img[src.wrapping_add(i) as usize]))
+                                    .collect();
+                                parts.push(format!("value {}", vals.join(",")));
+                            }
+                        }
+                    }
+                } else if bits.not_grom_dst {
+                    if let Some(GOp::Vdp { addr, indirect: false, index: None }) =
+                        d.operands.get(1)
+                    {
+                        if let Some(n) = vdp_note(*addr) {
+                            parts.push(format!("to the {n}"));
+                        }
+                    }
+                }
+                if let Some(GOp::Grom(src)) = d.operands.get(2) {
+                    if !bits.ram_src && !bits.cpu_held_grom_src {
+                        if let Some((base, off)) = chunk_at(*src) {
+                            if off > 0 {
+                                parts.push(format!("src = d_{base:04X}+0x{off:02X}"));
+                            }
+                        }
+                        if !glyphs.contains_key(src) {
+                            if let Some(n) = count {
+                                if let Some(p) = preview(*src, n) {
+                                    parts.push(format!("|{p}|"));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+        if parts.is_empty() {
+            None
+        } else {
+            Some(parts.join("; "))
+        }
+    };
+
     enum Piece {
         Fn { addr: u16, comments: Vec<String> },
-        Stmt { addr: u16, len: u16, text: String, demoted: bool },
+        Stmt { addr: u16, len: u16, text: String, note: Option<String>, demoted: bool },
         Bytes { addr: u16, len: u16, notes: Vec<String> },
         Data { addr: u16, len: usize, comments: Vec<String> },
     }
@@ -433,13 +814,55 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
                     }
                 }
                 let last = c.addr + (c.len - 1) as u16;
-                let refs: Vec<String> = gromrefs
-                    .range(c.addr..=last)
-                    .flat_map(|(_, v)| v.iter().map(|f| format!(">{f:04X}")))
-                    .take(6)
-                    .collect();
-                if !refs.is_empty() {
-                    comments.push(format!("// referenced by move() at {}", refs.join(", ")));
+                // Who reads this data, by function name.
+                let mut ref_fns: Vec<String> = Vec::new();
+                let mut sites = 0usize;
+                for (_, v) in gromrefs.range(c.addr..=last) {
+                    for &site in v {
+                        sites += 1;
+                        let n = match fn_of(site) {
+                            Some(f) => f.clone(),
+                            None => format!(">{site:04X}"),
+                        };
+                        if !ref_fns.contains(&n) {
+                            ref_fns.push(n);
+                        }
+                    }
+                }
+                if !ref_fns.is_empty() {
+                    let more = if ref_fns.len() > 6 { ", ..." } else { "" };
+                    let shown = ref_fns.iter().take(6).cloned().collect::<Vec<_>>().join(", ");
+                    comments.push(format!(
+                        "// read by move() in {shown}{more} ({sites} site{})",
+                        if sites == 1 { "" } else { "s" }
+                    ));
+                }
+                // Sound lists the code points the ISR at (format: [count]
+                // [count sound-chip bytes] [duration frames], 0 duration ends).
+                for (&sl, &site) in snd_lists.range(c.addr..=last) {
+                    let mut p = sl as usize;
+                    let mut blocks = 0usize;
+                    let mut frames = 0usize;
+                    while p < 0x10000 && blocks < 96 {
+                        let n = img[p] as usize;
+                        if n == 0 || n == 0xFF {
+                            break; // control block: jump / toggle+jump
+                        }
+                        if p + n + 1 >= 0x10000 {
+                            break;
+                        }
+                        let dur = img[p + n + 1] as usize;
+                        blocks += 1;
+                        frames += dur;
+                        p += n + 2;
+                        if dur == 0 {
+                            break;
+                        }
+                    }
+                    comments.push(format!(
+                        "// >{sl:04X}: sound list ({blocks} block{}, ~{frames} frames) — started at >{site:04X}",
+                        if blocks == 1 { "" } else { "s" }
+                    ));
                 }
                 pieces.push(Piece::Data { addr: c.addr, len: c.len, comments });
                 continue;
@@ -448,6 +871,34 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
             ti += 1;
             if fn_starts.contains(&addr) {
                 let mut comments = Vec::new();
+                // Observed effects, from the body's own statements.
+                let mut traits_: Vec<String> = Vec::new();
+                let info = fninfo.get(&addr);
+                if let Some(i) = info {
+                    if i.fmt {
+                        traits_.push("formats screen text (FMT)".into());
+                    }
+                    if i.vdp {
+                        traits_.push("writes VDP".into());
+                    }
+                    if i.gram {
+                        traits_.push("writes GRAM".into());
+                    }
+                    if i.key {
+                        traits_.push("reads keyboard/joystick".into());
+                    }
+                    if i.snd {
+                        traits_.push("drives sound".into());
+                    }
+                    if i.rand {
+                        traits_.push("uses random numbers".into());
+                    }
+                    if !i.xml.is_empty() {
+                        let list: Vec<String> =
+                            i.xml.iter().take(4).map(|x| format!(">{x:02X}")).collect();
+                        traits_.push(format!("XML {}", list.join(",")));
+                    }
+                }
                 let mut what: Vec<&str> = Vec::new();
                 for e in &entries {
                     if e.addr == addr {
@@ -455,17 +906,53 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
                     }
                 }
                 if what.is_empty() {
-                    comments.push(format!("// >{addr:04X}: subroutine"));
+                    let t = if traits_.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" — {}", traits_.join("; "))
+                    };
+                    comments.push(format!("// >{addr:04X}: subroutine{t}"));
                 } else {
                     for w in what {
                         comments.push(format!("// >{addr:04X}: {w}"));
                     }
+                    if !traits_.is_empty() {
+                        comments.push(format!("// {}", traits_.join("; ")));
+                    }
+                }
+                if let Some(i) = info {
+                    if !i.calls.is_empty() {
+                        let list: Vec<String> = i
+                            .calls
+                            .iter()
+                            .take(6)
+                            .map(|t| match fn_names.get(t) {
+                                Some(f) => f.clone(),
+                                None => format!(">{t:04X}"),
+                            })
+                            .collect();
+                        let more = if i.calls.len() > 6 { ", ..." } else { "" };
+                        comments.push(format!("// calls: {}{more}", list.join(", ")));
+                    }
                 }
                 if let Some(cs) = callers.get(&addr) {
-                    let list: Vec<String> =
-                        cs.iter().take(6).map(|c| format!(">{c:04X}")).collect();
-                    let more = if cs.len() > 6 { ", ..." } else { "" };
-                    comments.push(format!("// called from {}{more}", list.join(", ")));
+                    let mut names: Vec<String> = Vec::new();
+                    for &c in cs {
+                        let n = match fn_of(c) {
+                            Some(f) => f.clone(),
+                            None => format!(">{c:04X}"),
+                        };
+                        if !names.contains(&n) {
+                            names.push(n);
+                        }
+                    }
+                    let more = if names.len() > 6 { ", ..." } else { "" };
+                    let shown = names.iter().take(6).cloned().collect::<Vec<_>>().join(", ");
+                    comments.push(format!(
+                        "// called from: {shown}{more} ({} site{})",
+                        cs.len(),
+                        if cs.len() == 1 { "" } else { "s" }
+                    ));
                 }
                 pieces.push(Piece::Fn { addr, comments });
             }
@@ -491,9 +978,13 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
                 }
                 TKind::Stmt(d) => {
                     match em.render_tile(d) {
-                        Rendered::Stmt(text) => {
-                            pieces.push(Piece::Stmt { addr, len: tile.len, text, demoted: false })
-                        }
+                        Rendered::Stmt(text) => pieces.push(Piece::Stmt {
+                            addr,
+                            len: tile.len,
+                            text,
+                            note: stmt_note(d),
+                            demoted: false,
+                        }),
                         Rendered::Cond { pos, neg } => {
                             // Try to fuse with an immediately following BR/BS.
                             let fused = tile_list.get(ti).and_then(|(baddr, btile)| {
@@ -507,18 +998,23 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
                                     TKind::Stmt(bd) if (0x40..=0x7F).contains(&bd.opcode) => {
                                         let t = em.target_text(branch_target(bd)?);
                                         let c = if bd.opcode >= 0x60 { &pos } else { &neg };
-                                        Some((btile.len, format!("if ({c}) goto {t};")))
+                                        Some((
+                                            btile.len,
+                                            format!("if ({c}) goto {t};"),
+                                            stmt_note(bd),
+                                        ))
                                     }
                                     _ => None,
                                 }
                             });
                             match fused {
-                                Some((blen, text)) => {
+                                Some((blen, text, note)) => {
                                     ti += 1; // consume the branch tile
                                     pieces.push(Piece::Stmt {
                                         addr,
                                         len: tile.len + blen,
                                         text,
+                                        note,
                                         demoted: false,
                                     });
                                 }
@@ -526,6 +1022,7 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
                                     addr,
                                     len: tile.len,
                                     text: format!("test({pos});"),
+                                    note: None,
                                     demoted: false,
                                 }),
                             }
@@ -595,6 +1092,10 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
                 stats.elided_zero_bytes,
             ),
         );
+        push(&mut out, "// annotations: names and comments are advisory analysis; addresses are");
+        push(&mut out, "//   the ground truth. Vars at documented machine cells carry standard");
+        push(&mut out, "//   names; draw_/key_/snd_ prefixes mark functions whose only observed");
+        push(&mut out, "//   effect is display / input / sound; sub_/L_/d_ names are neutral.");
         push(
             &mut out,
             "// round-trip: this file recompiles byte-identically to the input payload",
@@ -632,7 +1133,11 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
             for ((vdp, wordw, addr), name) in &em.vars {
                 let space = if *vdp { "vdp" } else { "cpu" };
                 let width = if *wordw { "word" } else { "byte" };
-                let note = if *vdp { None } else { wellknown::describe(*addr) };
+                let note: Option<String> = if *vdp {
+                    vdp_note(*addr)
+                } else {
+                    wellknown::describe(*addr).map(str::to_string)
+                };
                 let decl = format!("var {name}: {width} @ {space}[0x{addr:04X}];");
                 match note {
                     Some(n) => push(&mut out, &format!("{decl:44} // {n}")),
@@ -675,28 +1180,132 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
                     }
                     push(&mut out, &format!("data d_{addr:04X} @ 0x{addr:04X} {{"));
                     let s = *addr as usize;
-                    for row in (s..s + len).collect::<Vec<_>>().chunks(8) {
-                        let items: Vec<String> =
-                            row.iter().map(|&i| format!("0x{:02X}", img[i])).collect();
-                        let ascii: String = row
-                            .iter()
-                            .map(|&i| {
-                                let c = img[i];
-                                if (0x20..0x7F).contains(&c) { c as char } else { '.' }
-                            })
-                            .collect();
-                        push(
-                            &mut out,
-                            &format!(
-                                "    {:47} // >{:04X} |{ascii}|",
+                    let e = s + len;
+                    let hex_rows = |out: &mut String, from: usize, to: usize| {
+                        for row in (from..to).collect::<Vec<_>>().chunks(8) {
+                            let items: Vec<String> =
+                                row.iter().map(|&i| format!("0x{:02X}", img[i])).collect();
+                            let ascii: String = row
+                                .iter()
+                                .map(|&i| {
+                                    let c = img[i];
+                                    if (0x20..0x7F).contains(&c) { c as char } else { '.' }
+                                })
+                                .collect();
+                            out.push_str(&format!(
+                                "    {:47} // >{:04X} |{ascii}|\n",
                                 items.join(", ") + ",",
                                 row[0]
-                            ),
+                            ));
+                        }
+                    };
+                    let mut i = s;
+                    while i < e {
+                        // Bytes a pattern-table upload identified as glyphs:
+                        // render the 8x8 pixels above the rows.
+                        let g = glyphs.range(..=(i as u16)).next_back().and_then(
+                            |(&ga, &(c0, n))| {
+                                let gs = ga as usize;
+                                let ge = gs + n as usize * 8;
+                                (i < ge && (i - gs).is_multiple_of(8))
+                                    .then(|| (c0 + ((i - gs) / 8) as u16, ge.min(e)))
+                            },
                         );
+                        if let Some((mut ch, ge)) = g {
+                            let mut p = i;
+                            while ge - p >= 8 {
+                                let band = ((ge - p) / 8).min(8);
+                                let hi = ch + band as u16 - 1;
+                                push(
+                                    &mut out,
+                                    &format!(
+                                        "    // >{p:04X}: 8x8 patterns, chars >{ch:02X}..>{hi:02X}:"
+                                    ),
+                                );
+                                for row in 0..8 {
+                                    let mut line = String::from("    // ");
+                                    for gi in 0..band {
+                                        let b = img[p + gi * 8 + row];
+                                        for bit in (0..8).rev() {
+                                            line.push(if b >> bit & 1 != 0 { '#' } else { '.' });
+                                        }
+                                        line.push(' ');
+                                    }
+                                    push(&mut out, line.trim_end());
+                                }
+                                for gi in 0..band {
+                                    let items: Vec<String> = (0..8)
+                                        .map(|k| format!("0x{:02X}", img[p + gi * 8 + k]))
+                                        .collect();
+                                    let c = ch + gi as u16;
+                                    let pc = if (0x20..0x7F).contains(&c) {
+                                        format!(" '{}'", c as u8 as char)
+                                    } else {
+                                        String::new()
+                                    };
+                                    push(
+                                        &mut out,
+                                        &format!(
+                                            "    {:47} // >{:04X} char >{:02X}{pc}",
+                                            items.join(", ") + ",",
+                                            p + gi * 8,
+                                            c
+                                        ),
+                                    );
+                                }
+                                p += band * 8;
+                                ch += band as u16;
+                            }
+                            if p < ge {
+                                hex_rows(&mut out, p, ge);
+                            }
+                            i = ge;
+                            continue;
+                        }
+                        // A printable run becomes a string literal.
+                        let mut j = i;
+                        while j < e && (0x20..0x7F).contains(&img[j]) {
+                            j += 1;
+                        }
+                        if j - i >= 8 {
+                            let mut p = i;
+                            while p < j {
+                                let n = (j - p).min(48);
+                                let text: String =
+                                    img[p..p + n].iter().map(|&b| b as char).collect();
+                                push(
+                                    &mut out,
+                                    &format!("    {:47} // >{p:04X}", format!("{text:?},")),
+                                );
+                                p += n;
+                            }
+                            i = j;
+                            continue;
+                        }
+                        // Plain hex until the next glyph or string run.
+                        let mut j = i;
+                        loop {
+                            j += 1;
+                            if j >= e || glyphs.contains_key(&(j as u16)) {
+                                break;
+                            }
+                            if (0x20..0x7F).contains(&img[j]) {
+                                let mut k = j;
+                                while k < e && (0x20..0x7F).contains(&img[k]) {
+                                    k += 1;
+                                }
+                                if k - j >= 8 {
+                                    break;
+                                }
+                                j = k - 1;
+                            }
+                        }
+                        hex_rows(&mut out, i, j);
+                        i = j;
                     }
                     push(&mut out, "}");
                 }
-                Piece::Stmt { addr, len, text, demoted } => {
+                Piece::Stmt { addr, len, text, note, demoted } => {
                     if let Some(l) = em.labels.get(addr) {
                         close_asm(&mut out, &mut asm_open);
                         push(&mut out, &format!("{l}:"));
@@ -713,7 +1322,10 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
                         emit_byte_rows(&mut out, &img, *addr, *len);
                     } else {
                         close_asm(&mut out, &mut asm_open);
-                        push(&mut out, &format!("    {text}"));
+                        match note {
+                            Some(n) => push(&mut out, &format!("    {text:<43} // {n}")),
+                            None => push(&mut out, &format!("    {text}")),
+                        }
                     }
                 }
                 Piece::Bytes { addr, len, notes } => {
@@ -955,6 +1567,13 @@ impl Emitter<'_> {
         self.vars
             .entry((vdp, word, addr))
             .or_insert_with(|| {
+                // Documented machine cells get their standard names; the
+                // declaration keeps the address, so nothing is lost.
+                if !vdp {
+                    if let Some(n) = wellknown::cell_name(addr, word) {
+                        return n.to_string();
+                    }
+                }
                 let prefix = match (vdp, word) {
                     (false, false) => "b",
                     (false, true) => "w",
