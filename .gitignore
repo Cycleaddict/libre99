@@ -13,8 +13,10 @@ target
 # Contains mutation testing data
 **/mutants.out*/
 
-# Claude Code local config
-.claude/
+# Claude Code: local state (settings, caches, findings) stays untracked,
+# but the project's checked-in skills (.claude/skills/) ship with the repo.
+.claude/*
+!.claude/skills/
 .mcp.json
 
 # Third-party media (TI firmware, commercial cartridge/disk images) —

@@ -476,12 +476,19 @@ libre99gsl decompile <in.ctg|in.bin> -o <out.gsl>
                      [--base 0xNNNN]   GROM base for headerless .bin dumps
                      [--rom]           treat a .bin as a CPU-ROM dump
 libre99gsl roundtrip <in.ctg|in.bin> [--keep <out.gsl>]
+libre99gsl verify    <in.gsl> <against.ctg|.bin>  [--base 0xNNNN] [--rom]
 ```
 
 `roundtrip` decompiles, recompiles, and byte-compares in memory, printing a
 per-page/per-bank verdict — the same check the test suite runs over the
 committed images and the local cartridge corpus (`third-party/cartridges/`,
 via `libre99-core`'s `third_party` gate).
+
+`verify` compiles a `.gsl` and byte-compares its payload against an original
+image — the check to run after **editing** a decompilation (renames,
+comments, annotation passes; §13). It is name-blind: an edit that only
+renames symbols or touches comments always verifies; an edit that changes
+what the file compiles to fails with the first mismatching address.
 
 ---
 
@@ -494,3 +501,47 @@ via `libre99-core`'s `third_party` gate).
   `parse`/`cont`/`exec`/`rtnb` opcodes.
 * The compiler never *chooses* between equivalent encodings: what you write is
   the opcode you get (§6.1). Optimization is the author's job.
+
+---
+
+## 13. Runtime-informed annotation — the `/annotate` skill
+
+Static annotation (§10.4) stops where the bytes stop telling: `sub_C41E` is
+honest but blind. The repository ships a **Claude Code skill** —
+[`.claude/skills/annotate/SKILL.md`](../.claude/skills/annotate/SKILL.md),
+checked in and version-controlled like any other file — that layers **runtime
+evidence** on top. An AI session plays the cartridge headlessly through
+`libre99probe` ([PROBE.md](PROBE.md)): it reads the screen, presses keys,
+records GROM fetch traces and execution-coverage bitmaps, and correlates
+*which functions ran while which screens showed*. It then edits the `.gsl` —
+better names, `observed:`/`likely:` comments — and maintains one
+`EXPLORATION NOTES` block at the end of the file recording each session as a
+replayable keystroke script, the coverage numbers, every rename with its
+evidence, what couldn't be reached and why, and suggested hints for the next
+pass.
+
+To use it: open the repository in [Claude Code](https://claude.com/claude-code)
+and run
+
+```text
+/annotate <decompilation.gsl> <cartridge.ctg> [hints.txt]
+```
+
+where the hints file is optional free text (where a companion data disk
+lives, what the program is, what to focus on). Iterate: re-run with new hints
+until the coverage numbers plateau — passes are cumulative.
+
+Three properties keep this safe and strictly optional:
+
+- **`libre99gsl verify` gates every edit** (§11): the skill runs it after
+  each editing batch, and since the byte comparison is name-blind, an
+  annotation pass can produce a bad name but never a bad byte. (The
+  guarantee is pinned by a corpus test:
+  `renames_and_comments_cannot_change_the_payload`.)
+- **Everything works without AI.** The decompiler, `verify`, and the probe
+  are plain tools; the skill is an optional layer for Claude Code users, and
+  the "prompt engineering" lives in one reviewed markdown file that improves
+  through ordinary commits.
+- **Commercial-cartridge artifacts stay out of the repository** — the
+  enriched `.gsl`, evidence files, and hints for third-party titles live
+  outside the tree, like every other derivative of `third-party/` media.

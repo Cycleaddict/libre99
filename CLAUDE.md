@@ -21,6 +21,12 @@ probe-shell manual (`libre99probe`, the headless line-command control surface
 over the emulator) is [docs/PROBE.md](docs/PROBE.md); the firmware-rewrite docs
 start at [original-content/system-roms/README.md](original-content/system-roms/README.md).
 
+The repository also ships one checked-in Claude Code skill, **`/annotate`**
+(`.claude/skills/annotate/SKILL.md`, documented in docs/GSL.md §13): it
+enriches a GSL decompilation with runtime evidence gathered through
+`libre99probe`, gated by `libre99gsl verify`. The rest of `.claude/` (local
+settings, caches) is untracked by design.
+
 **Documentation is part of every change — keep it fresh.** When a change
 alters behavior, status, or structure, update the affected docs (and the
 in-app `Esc`/`F1` help for user-visible behavior) **in the same commit**; when a
@@ -34,11 +40,13 @@ project-doc refactors.
 ## Reference: Classic99 source
 
 A full checkout of **Classic99** (Tursi's well-established, hardware-verified
-TI-99/4A emulator, C++) is available on **both** workstations used for this
-project: **`C:\ClaudeShared\classic99`** on the PC and
-**`/Users/Shared/classic99`** on the Mac (same tree, sibling of this repo). It
-is *not* part of this project — it is an external reference to **consult, never
-copy**. Consult it when emulating subtle hardware behavior; it has been
+TI-99/4A emulator, C++) is kept **maintainer-local** — like `third-party/`,
+it is not part of this repository. On the project's own workstations it lives
+at **`C:\ClaudeShared\classic99`** (PC) and **`/Users/Shared/classic99`**
+(Mac); if you are working from a fresh clone without it, its source is public
+(github.com/tursilion/classic99) — or skip it and rely on the citations
+already recorded next to the code. It is an external reference to **consult,
+never copy**. Consult it when emulating subtle hardware behavior; it has been
 cross-checked against real hardware and resolves ambiguities the datasheets
 leave open. Most useful files:
 

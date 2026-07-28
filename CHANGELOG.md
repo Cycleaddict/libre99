@@ -63,6 +63,20 @@ clean-room firmware it embeds, and TI PYTHON's banner.
   AI-assisted decompilation-annotation workflows. Pure `std`, depends only on
   `libre99-core`; driven end to end by its own test suite, including a
   corpus-gated Tunnels of Doom walk.
+- **`libre99gsl verify` + the `/annotate` skill** — runtime-informed
+  annotation of decompilations (docs/GSL.md §13). `verify <in.gsl>
+  <against.ctg|.bin>` compiles a (hand- or AI-edited) decompilation and
+  byte-compares its payload against the original image — the name-blind
+  safety gate that makes editing a decompilation provably unable to change
+  its bytes (pinned by a corpus test). On top of it, the repository's first
+  checked-in Claude Code skill (`.claude/skills/annotate/SKILL.md`) drives
+  the whole workflow: play the cartridge headlessly through `libre99probe`,
+  correlate execution traces/coverage with what the screen showed, rename
+  and comment with recorded evidence (`observed:`/`likely:`), and maintain
+  a cumulative `EXPLORATION NOTES` block (replayable session scripts,
+  coverage, renames-with-evidence, unreached code, next-pass hints).
+  `.gitignore` now tracks `.claude/skills/` while keeping local Claude
+  state untracked; everything continues to work without AI.
 - The `Esc`/`F1` **help overlay was redesigned** to the approved four-tab
   "quiet terminal" design (per `design_handoff_help_redesign`): solid black
   backdrop, hairline rules and whitespace instead of cards, a single cyan

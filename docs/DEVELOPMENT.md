@@ -124,6 +124,8 @@ the same commit**:
 - GSL language/compiler/decompiler changes → [docs/GSL.md](GSL.md).
 - Probe-shell commands/CLI changes → [docs/PROBE.md](PROBE.md) (and its
   in-shell `help` text, `libre99-probe/src/lib.rs`).
+- Annotation-workflow changes → the `/annotate` skill itself
+  (`.claude/skills/annotate/SKILL.md`) and [docs/GSL.md](GSL.md) §13.
 
 Completed plans and dated reports are not deleted — they move to
 [docs/history/](history/) (project-wide) or

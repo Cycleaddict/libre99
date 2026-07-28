@@ -191,10 +191,10 @@ the machine exactly, and a `save` at the end makes the next run instant.
 
 It executes no AI logic and never modifies the host beyond the files you name
 in `shot`/`save`/`trace save`/`cover save` commands. It is the mechanical
-layer only — a future annotation workflow (hints files, evidence bundles,
-runtime-informed enrichment of the static annotations the GSL decompiler
-already emits, [GSL.md](GSL.md) §10.4) would sit *on top of* this shell, in a
-separate step that is always optional.
+layer only — the annotation workflow that sits *on top of* it (the
+`/annotate` Claude Code skill, which plays a cartridge through this shell and
+enriches its GSL decompilation with the evidence) is documented in
+[GSL.md](GSL.md) §13 and is always optional.
 
 ## Where it lives
 

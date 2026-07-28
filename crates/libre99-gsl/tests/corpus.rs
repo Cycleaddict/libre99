@@ -98,6 +98,31 @@ fn tunnels_of_doom_round_trips_byte_identically() {
     assert!(d.text.contains("// prints: "), "printed text lifted into fn headers");
 }
 
+/// The annotation-safety contract the `/annotate` skill (and any hand
+/// editor) rests on: renaming symbols and adding comments to a decompiled
+/// file cannot change the payload it compiles to — `libre99gsl verify`
+/// stays green through any names-and-comments-only edit.
+#[test]
+fn renames_and_comments_cannot_change_the_payload() {
+    let Some(bytes) = corpus_file("tunnelsofdoom.ctg") else { skip!() };
+    let d = decompile(
+        &bytes,
+        &Options { input_name: "tunnelsofdoom.ctg".into(), ..Default::default() },
+    )
+    .expect("decompile+verify");
+    // An annotation pass in miniature: rename a function everywhere it
+    // appears (declaration, call sites, cross-reference comments) and
+    // append an exploration-notes block.
+    assert!(d.text.contains("sub_A000"), "expected symbol missing from the decompilation");
+    let mut edited = d.text.replace("sub_A000", "annotated_demo_A000");
+    edited.push_str("\n// EXPLORATION NOTES — a demo annotation pass.\n");
+    let c = libre99_gsl::compile(&edited).expect("edited source still compiles");
+    let (want, _) = libre99_gsl::parse_input(&bytes, None, false).expect("parse original");
+    let got = libre99_gsl::payload_of(&c, libre99_gsl::OutFormat::Ctg).expect("payload");
+    let diffs = libre99_gsl::container::diff(&want, &got, true);
+    assert!(diffs.is_empty(), "annotation changed the payload: {diffs:?}");
+}
+
 /// Every `.ctg` in the corpus must round-trip byte-identically. Ignored by
 /// default (137 cartridges is slow in debug builds):
 /// `cargo test -p libre99-gsl --release -- --ignored corpus_sweep`.
