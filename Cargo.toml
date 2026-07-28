@@ -20,10 +20,15 @@
 #
 #   crates/libre99-gsl    GSL, the GPL Structured Language: compiler + verified
 #                      decompiler (`libre99gsl`). Pure `std`; see docs/GSL.md.
+#
+#   crates/libre99-probe  the headless probe shell (`libre99probe`): a scriptable
+#                      line-command control surface over the emulated console,
+#                      for humans and AI agents alike. Pure `std`; depends only
+#                      on libre99-core. See docs/PROBE.md.
 
 [workspace]
 resolver = "2"
-members = ["crates/libre99-core", "crates/libre99-app", "crates/libre99-asm", "crates/libre99-gpl", "crates/libre99-gsl"]
+members = ["crates/libre99-core", "crates/libre99-app", "crates/libre99-asm", "crates/libre99-gpl", "crates/libre99-gsl", "crates/libre99-probe"]
 
 [workspace.package]
 # The single source of truth for the project version. Everything that reports a

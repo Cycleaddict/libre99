@@ -17,7 +17,8 @@ The [README](README.md) is the overview; `docs/` holds the project docs:
 and `docs/history/` (archived plans/reports). The assembler guide is
 [docs/ASSEMBLER.md](docs/ASSEMBLER.md); the GSL language reference (the GPL
 high-level language + compiler/decompiler) is [docs/GSL.md](docs/GSL.md); the
-firmware-rewrite docs
+probe-shell manual (`libre99probe`, the headless line-command control surface
+over the emulator) is [docs/PROBE.md](docs/PROBE.md); the firmware-rewrite docs
 start at [original-content/system-roms/README.md](original-content/system-roms/README.md).
 
 **Documentation is part of every change — keep it fresh.** When a change
@@ -94,8 +95,8 @@ parallel — check `git status` for a sibling's in-flight work before committing
 
 ## Build / test
 
-- `cargo test --workspace` — all five crates (core, app, asm, gpl, gsl); the
-  emulator core (`-p libre99-core`) is pure `std` with zero third-party deps.
+- `cargo test --workspace` — all six crates (core, app, asm, gpl, gsl, probe);
+  the emulator core (`-p libre99-core`) is pure `std` with zero third-party deps.
 - `cargo clippy --workspace` — keep this clean.
 - Repo scripts must be `sh` + `cargo` only (no `make`, no `python` on the PC).
 - Orientation: `docs/STATUS.md` first, then `docs/ARCHITECTURE.md` and

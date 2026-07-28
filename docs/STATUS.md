@@ -69,6 +69,7 @@ and [rom/README.md](../original-content/system-roms/rom/README.md).
 | `libre99asm` — TMS9900 assembler, `.ctg` packager, disassembler | ✅ complete (all 69 base opcodes; [guide](ASSEMBLER.md)) |
 | `libre99gpl` — GPL assembler/decoder/disassembler + GROM build | ✅ complete |
 | `libre99gsl` — GSL, the GPL Structured Language: compiler + self-verifying decompiler | ✅ complete ([reference](GSL.md); round-trips the console GROM and the full 137-cartridge corpus byte-identically) |
+| `libre99probe` — the headless probe shell: scriptable line commands over the machine (screen-as-text, trace/coverage, save states) for humans and AI agents | ✅ complete ([manual](PROBE.md)) |
 | Titris — original cartridge, source → own assembler → boots in own emulator | ✅ complete, playable, gameplay-tested |
 | Sokoban — second original cartridge (12 credited Microban levels, undo, flood-filled floors) | ✅ complete, playable; the test suite plays every level to completion |
 | Jaywalker 99 — third original cartridge: endless hopper working 24 sprites + all four PSG voices | ✅ complete, playable, gameplay-tested (incl. a 5,000-frame input soak) |
@@ -76,7 +77,7 @@ and [rom/README.md](../original-content/system-roms/rom/README.md).
 
 ## Health
 
-- `cargo test --workspace` green — **500+ tests** across the five crates
+- `cargo test --workspace` green — **500+ tests** across the six crates
   (CPU conformance, chip semantics, boot/cartridge/disk integration gates,
   firmware differential suites, the 137-cartridge sweep, save-state
   round-trips, frontend logic).

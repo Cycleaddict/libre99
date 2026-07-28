@@ -62,7 +62,7 @@ comments next to the code that encodes each quirk.
 
 ## 2. Code organization
 
-A **Cargo workspace of five crates**. The split makes the core's "zero
+A **Cargo workspace of six crates**. The split makes the core's "zero
 third-party dependencies" rule structural rather than aspirational: only the
 desktop app links windowing/audio/logging crates.
 
@@ -72,6 +72,7 @@ crates/libre99-app/    desktop frontend (winit + softbuffer + cpal + log/simplel
 crates/libre99-asm/    libre99asm — TMS9900 assembler + .ctg packager + disassembler (pure std)
 crates/libre99-gpl/    libre99gpl — GPL assembler/decoder/disassembler + console-GROM build (pure std)
 crates/libre99-gsl/    libre99gsl — GSL, the GPL Structured Language: compiler + verified decompiler (pure std)
+crates/libre99-probe/  libre99probe — the headless probe shell: scriptable line commands over the machine (pure std)
 ```
 
 `libre99-asm` and `libre99-gpl` are both stand-alone tools **and** the build +
@@ -141,6 +142,12 @@ its tests run against.)
 | `census` | Byte-census tooling: classifies our image against the authentic one and gates unclassified divergence. |
 | `system_grom` | Builds the clean-room console GROM from `console.gpl` + spliced blocks. |
 | `main` | The `libre99gpl` CLI. |
+
+### `libre99-probe` ([manual](PROBE.md))
+| Module | Responsibility |
+|---|---|
+| `lib` | The probe session: a `Machine` plus the line-command interpreter (`frames`/`press`/`type`/`screen`/`shot`/`peek`/`trace`/`cover`/`save`…) — one string in, one reply out, deterministic. Embeds the committed clean-room firmware so it boots from a fresh checkout. |
+| `main` | The `libre99probe` REPL: CLI flags mirroring the desktop app's firmware/media overrides, `--script` execution, interactive prompt at a terminal, echoed fail-fast transcripts on a pipe. |
 
 ---
 

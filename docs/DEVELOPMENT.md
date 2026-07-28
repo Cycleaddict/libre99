@@ -9,7 +9,7 @@ current state of the world is in [STATUS.md](STATUS.md).
 ## Build and test
 
 ```bash
-cargo test --workspace           # the whole suite (500+ tests, all five crates)
+cargo test --workspace           # the whole suite (500+ tests, all six crates)
 cargo clippy --workspace         # keep it clean — CI enforces -D warnings
 cargo run --release -p libre99-app  # run the emulator
 ```
@@ -122,6 +122,8 @@ the same commit**:
   firmware gaps → `original-content/system-roms/LIMITATIONS.md`.
 - Assembler language/CLI changes → [docs/ASSEMBLER.md](ASSEMBLER.md).
 - GSL language/compiler/decompiler changes → [docs/GSL.md](GSL.md).
+- Probe-shell commands/CLI changes → [docs/PROBE.md](PROBE.md) (and its
+  in-shell `help` text, `libre99-probe/src/lib.rs`).
 
 Completed plans and dated reports are not deleted — they move to
 [docs/history/](history/) (project-wide) or

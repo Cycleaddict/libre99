@@ -1,0 +1,22 @@
+# The probe shell — a headless, scriptable control surface over the emulated
+# console (`libre99probe`). One binary that boots the machine with no window,
+# executes line commands (run frames, press keys, read the screen back as
+# text, peek memory, trace GROM fetches, record coverage, save/restore
+# states), and works equally as an interactive REPL for a human or a piped
+# subprocess for an AI agent. Pure `std`; depends only on the emulator core.
+# The clean-room firmware it boots by default is embedded from the committed
+# artifacts under `original-content/system-roms/` (the same bytes the desktop
+# app embeds). The manual is docs/PROBE.md.
+[package]
+name = "libre99-probe"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "libre99probe"
+path = "src/main.rs"
+
+[dependencies]
+libre99-core = { path = "../libre99-core" }

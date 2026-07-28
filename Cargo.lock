@@ -791,6 +791,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "libre99-probe"
+version = "0.1.0"
+dependencies = [
+ "libre99-core",
+]
+
+[[package]]
 name = "libredox"
 version = "0.1.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -45,6 +45,24 @@ clean-room firmware it embeds, and TI PYTHON's banner.
   statements — and lifts the text they print into `// prints:` function
   headers. Non-canonical blocks still fall back to annotated `BYTE` rows,
   and the whole-file byte-identity gate is unchanged.
+- **`libre99probe` — the headless probe shell** (`crates/libre99-probe`,
+  manual [docs/PROBE.md](docs/PROBE.md)): a scriptable line-command control
+  surface over the emulated console, usable identically by a human at a
+  terminal (interactive REPL) and by a program or AI agent on a pipe (echoed,
+  fail-fast transcripts). Boots the embedded clean-room firmware headlessly
+  (authentic images via the app's own `--system-rom`/`--system-grom`/
+  `--disk-dsr` flags), mounts cartridges and disks, and offers: `frames` /
+  `settle` / `press` / `hold` / `type` (with the TI SHIFT/FCTN character
+  synthesis), the screen decoded to an ASCII grid, dependency-free PNG
+  screenshots, side-effect-free `peek`/`vpeek` hex dumps, `poke`/`vpoke`,
+  CPU/GROM state panels, a PSG audibility meter, GROM fetch **tracing** and
+  GROM+CPU **coverage** recording with per-page summaries and range exports,
+  and full **save/load state** checkpoints (the desktop app's portable v3
+  format). The machine is deterministic, so a probe script is an exact,
+  replayable record of a session — the machine-control layer for the planned
+  AI-assisted decompilation-annotation workflows. Pure `std`, depends only on
+  `libre99-core`; driven end to end by its own test suite, including a
+  corpus-gated Tunnels of Doom walk.
 - The `Esc`/`F1` **help overlay was redesigned** to the approved four-tab
   "quiet terminal" design (per `design_handoff_help_redesign`): solid black
   backdrop, hairline rules and whitespace instead of cards, a single cyan
