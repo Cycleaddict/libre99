@@ -45,10 +45,10 @@
 
 //! Discover the console ROM's KSCAN key-table INTERFACE: for every character
 //! key (unshifted and shifted), boot the authentic GROM, press it, and record
-//! (a) the GROM table offset the ROM reads and (b) the ASCII it deposits in
-//! >8375. This maps scan-code offset -> key, so we can author an equivalent
-//! table in our rewrite from the ASCII standard (clean-room: we take only the
-//! functional offsets here, and fill the values ourselves).
+//! (a) the GROM table offset the ROM reads and (b) the ASCII it deposits
+//! in >8375. This maps scan-code offset -> key, so we can author an
+//! equivalent table in our rewrite from the ASCII standard (clean-room: we
+//! take only the functional offsets here, and fill the values ourselves).
 
 use std::sync::LazyLock;
 

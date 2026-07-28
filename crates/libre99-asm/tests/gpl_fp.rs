@@ -469,9 +469,9 @@ fn csn_text_fuzz() {
 /// ROUND (XML >02) takes its digit position from >8354; the gates above
 /// never plant it, so the position axis gets its own sweep. Positions that
 /// keep the ripple inside the FP scratch are bit-exact; garbage positions
-/// >= >96 walk the ripple through the LIVE GPLWS itself, where the outcome
-/// depends on the interpreter's transient register file — two of those
-/// walks (>AA/>B1, starting on the R10/R13 cells) diverge from the
+/// of >96 and above walk the ripple through the LIVE GPLWS itself, where
+/// the outcome depends on the interpreter's transient register file — two
+/// of those walks (>AA/>B1, starting on the R10/R13 cells) diverge from the
 /// authentic and are KEPT as a ledgered garbage corner (RECON §27, ROUNDH's
 /// header comment; >AB was ledgered too until the XB-substrate relocation
 /// shifted our transient register file and it started matching — retired

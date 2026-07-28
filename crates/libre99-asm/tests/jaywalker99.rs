@@ -302,12 +302,12 @@ fn bushes_block_hops() {
     assert_eq!(m.bus().peek_word(SCORE), 0);
 
     // A single bush on the neighboring cell blocks a sideways hop.
-    let col = (m.bus().peek_word(PX) >> 8) as u16; // cell column (x/16)
+    let col = m.bus().peek_word(PX) >> 8; // cell column (x/16)
     m.bus_mut().poke_word(rec(2) + L_MASK, 1 << (col + 1));
     tap(&mut m, TiKey::D);
-    assert_eq!((m.bus().peek_word(PX) >> 8) as u16, col, "the bush blocks east");
+    assert_eq!(m.bus().peek_word(PX) >> 8, col, "the bush blocks east");
     tap(&mut m, TiKey::S);
-    assert_eq!((m.bus().peek_word(PX) >> 8) as u16, col - 1, "west is open");
+    assert_eq!(m.bus().peek_word(PX) >> 8, col - 1, "west is open");
 }
 
 #[test]

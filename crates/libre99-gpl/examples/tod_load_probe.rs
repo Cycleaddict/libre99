@@ -256,10 +256,11 @@ fn diff_load(cart: &Cartridge, ours: &[u8], key: TiKey, keyname: &str) {
     let lo = post_key_log(ours, cart, key, 150);
 
     // Cart-only subsequences, remembering each fetch's index in the full log.
-    let cart: fn(&Vec<(u16, u8)>) -> Vec<(usize, u16, u8)> =
-        |l| l.iter().enumerate().filter(|(_, (a, _))| *a >= 0x6000).map(|(i, (a, b))| (i, *a, *b)).collect();
-    let ca = cart(&la);
-    let co = cart(&lo);
+    fn cart_only(l: &[(u16, u8)]) -> Vec<(usize, u16, u8)> {
+        l.iter().enumerate().filter(|(_, (a, _))| *a >= 0x6000).map(|(i, (a, b))| (i, *a, *b)).collect()
+    }
+    let ca = cart_only(&la);
+    let co = cart_only(&lo);
     println!("  cart fetches after key: authentic={} ours={}", ca.len(), co.len());
 
     let n = ca.len().min(co.len());

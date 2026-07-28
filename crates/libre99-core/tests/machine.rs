@@ -114,10 +114,10 @@ fn word_write_to_sound_port_reaches_psg_once() {
     );
 }
 
-/// The hardware decodes 12 CRU address lines, so software bit addresses above
-/// >0FFF alias back into the 4096-bit space — a write to bit >1012 lands on
-/// bit >012 (a keyboard column-select pin), and a read of bit >1008 samples
-/// bit >008 (a keyboard row).
+/// The hardware decodes 12 CRU address lines, so software bit addresses
+/// above >0FFF alias back into the 4096-bit space — a write to bit >1012
+/// lands on bit >012 (a keyboard column-select pin), and a read of
+/// bit >1008 samples bit >008 (a keyboard row).
 #[test]
 fn cru_bit_addresses_alias_into_the_12_bit_space() {
     use libre99_core::keyboard::TiKey;

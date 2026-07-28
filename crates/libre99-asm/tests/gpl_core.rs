@@ -1095,13 +1095,13 @@ fn io_function_from_memory() {
     );
 }
 
-/// The ext-GPL vestige: special op >14 and two-op >98 dispatch through the
-/// >0C0C card trampoline — CRU >1B00 on, then a branch into the absent card's
-/// >4000 space (an empty-bus no-op march, the authentic accident). The run is
-/// bounded in INSTRUCTIONS (an unbounded march wraps past >FFFE and starts
-/// executing the ROM itself as code, where the two images legitimately
-/// differ): after the departure both machines must be marching the card
-/// space with identical observable state.
+/// The ext-GPL vestige: special op >14 and two-op >98 dispatch through
+/// the >0C0C card trampoline — CRU >1B00 on, then a branch into the absent
+/// card's >4000 space (an empty-bus no-op march, the authentic accident).
+/// The run is bounded in INSTRUCTIONS (an unbounded march wraps past >FFFE
+/// and starts executing the ROM itself as code, where the two images
+/// legitimately differ): after the departure both machines must be marching
+/// the card space with identical observable state.
 #[test]
 fn ext_gpl_ops_take_the_card_trampoline() {
     let Some(auth_rom) = auth_rom() else { return };
@@ -1258,10 +1258,13 @@ cases! {
 // PC warp) is gated here.
 // ============================================================================
 
+/// The compared observable state: (scratchpad, VDP registers, VRAM window).
+type Snapshot = (Vec<u8>, Vec<u8>, Vec<u8>);
+
 /// Drive one cassette IO function under `rom` and return (pad snapshot,
 /// the 9901 interrupt mask, FLAGS). The engine parks in its first stepped
 /// half-cell; four frames are plenty.
-fn cassette_run(rom: &[u8], func: u8) -> ((Vec<u8>, Vec<u8>, Vec<u8>), bool, u8) {
+fn cassette_run(rom: &[u8], func: u8) -> (Snapshot, bool, u8) {
     let p = prog(vec![
         0xBF, 0x42, 0x00, 0x80, // DST @>8342,>0080 (byte count 128 = 2 records)
         0xBF, 0x44, 0x10, 0x00, // DST @>8344,>1000 (the VDP window)
@@ -1295,9 +1298,9 @@ fn cassette_write_arms_and_parks() {
     assert_eq!(a.0[0x41], 0x00, "cassette #4: the post-IO marker must never run");
 }
 
-/// IO #5 (read) clears the verify bit; IO #6 (verify) sets it; both set the
-/// >20 fork and the >21 record-phase marker in >837C (visible as >20 under
-/// the &F8 mask), park, and match across the ROMs.
+/// IO #5 (read) clears the verify bit; IO #6 (verify) sets it; both set
+/// the >20 fork and the >21 record-phase marker in >837C (visible as >20
+/// under the &F8 mask), park, and match across the ROMs.
 #[test]
 fn cassette_read_and_verify_flags() {
     let Some(auth_rom) = auth_rom() else { return };

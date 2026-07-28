@@ -94,8 +94,8 @@ fn channel_audible_frames(m: &mut Machine, n: usize) -> [usize; 4] {
     let mut c = [0usize; 4];
     for _ in 0..n {
         m.run_frame();
-        for ch in 0..4 {
-            if m.bus().psg.volume(ch) < 0x0F { c[ch] += 1; }
+        for (ch, count) in c.iter_mut().enumerate() {
+            if m.bus().psg.volume(ch) < 0x0F { *count += 1; }
         }
     }
     c
@@ -140,10 +140,12 @@ fn run(grom: &[u8], cart: &Cartridge, from: F5From) -> Health {
         m.load_disk_controller(&dsr);
     }
     m.reset();
-    let mut h = Health::default();
     // Cold-boot beep sounds during the first settle (unless we F5 later, in which
     // case the beep we care about is the post-F5 one, captured below).
-    h.boot_beep = frames_audible(&mut m, 40);
+    let mut h = Health {
+        boot_beep: frames_audible(&mut m, 40),
+        ..Health::default()
+    };
 
     match from {
         F5From::ColdOnly | F5From::Title => {}

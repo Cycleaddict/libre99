@@ -376,10 +376,12 @@ mod tests {
 
         // Full round-trip through the serializer preserves the session keys —
         // including Windows paths, whose backslashes need TOML escaping.
-        let mut d = Config::default();
-        d.last_cartridge = r"C:\Users\ti\media\parsec.ctg".into();
-        d.last_disk = String::new();
-        d.browser_dir = r"C:\Users\ti\media".into();
+        let d = Config {
+            last_cartridge: r"C:\Users\ti\media\parsec.ctg".into(),
+            last_disk: String::new(),
+            browser_dir: r"C:\Users\ti\media".into(),
+            ..Config::default()
+        };
         assert_eq!(Config::from_toml_str(&d.to_toml_string()), d);
     }
 

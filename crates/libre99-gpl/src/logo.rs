@@ -254,9 +254,10 @@ mod tests {
 
     #[test]
     fn codes_stay_below_the_font() {
-        // The glyphs must fit between the copyright glyph (>0A) and the font (>20).
-        assert!(FIRST_CODE > 0x0A);
-        assert!(FIRST_CODE as usize + GLYPHS - 1 < 0x20);
+        // The glyphs must fit between the copyright glyph (>0A) and the font
+        // (>20) — both bounds are compile-time facts, checked as such.
+        const _: () = assert!(FIRST_CODE > 0x0A);
+        const _: () = assert!(FIRST_CODE as usize + GLYPHS - 1 < 0x20);
     }
 
     #[test]

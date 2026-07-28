@@ -263,7 +263,7 @@ mod tests {
         let (w, h) = (40, 12);
         let mut fb = vec![0u32; w * h];
         Canvas::new(&mut fb, w, h).draw_text(1, 1, "HI!", 0x00FF_FFFF, 1);
-        assert!(fb.iter().any(|&p| p == 0x00FF_FFFF), "nothing was drawn");
+        assert!(fb.contains(&0x00FF_FFFF), "nothing was drawn");
         // Drawing far off-screen must not panic or write anywhere.
         let mut fb2 = vec![0u32; w * h];
         Canvas::new(&mut fb2, w, h).draw_text(1000, 1000, "OFF", 0x00FF_FFFF, 2);

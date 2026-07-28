@@ -140,7 +140,7 @@ fn main() {
         let cell = (m.bus().peek(0x8300), m.bus().peek(0x8301));
         let int = m.bus().tms9901.vdp_interrupt_enabled();
         let interesting = (0x0100..=0x0118).contains(&ga);
-        if (cell != last_cell || int != last_int) && (interesting || cell != last_cell) {
+        if cell != last_cell || (int != last_int && interesting) {
             println!(
                 "step {i}: PC={:04X} grom_addr={:04X}  >8300={:02X}{:02X} -> {:02X}{:02X}  9901int={}",
                 m.cpu().pc(),
