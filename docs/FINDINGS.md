@@ -42,6 +42,23 @@ boundaries by hand (`libre99gsl compile --format grom`, then
    output) to seed additional entries. The recompile-identity gate stays
    unchanged, so the worst a bad seed can do is fail the gate.
 
+**Root cause confirmed (2026-07-28, follow-up).** A full manual
+re-disassembly of the worst 632-byte "data" block (boundaries seeded from
+GROM fetch traces; all 122 trace-proven instruction starts landed on the
+recovered listing's boundaries) pinned the tiler's failure mode: **GPL's
+inline-argument idiom** — `CALL` to a routine whose first act is `FETCH`,
+consuming operand bytes from the *caller's* instruction stream (the ToD
+cartridge uses this seven distinct ways: RAND-range bounds, a mode byte, a
+message id, a cell selector, a delay constant, …). The tiler, unaware the
+callee consumes stream bytes, resumes decoding at the wrong offset, the
+stream de-synchronizes, and whole regions get classified as data; a
+secondary artefact is off-by-a-few function boundaries (a spurious leading
+instruction absorbed from the neighboring stream). Concrete fix now
+available: detect FETCH-at-entry callees statically, record "consumes N
+inline bytes" per callee, and have the tiler skip operands at each call
+site — combined with (1) this would have decoded the entire region. The
+same idiom likely explains most `d_…` blocks that traces show executing.
+
 ## F-002 · Probe: no raw binary memory export (2026-07-28)
 
 **Symptom.** Extracting large VRAM/CPU regions for offline analysis means
