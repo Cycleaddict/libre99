@@ -59,6 +59,21 @@ inline bytes" per callee, and have the tiler skip operands at each call
 site — combined with (1) this would have decoded the entire region. The
 same idiom likely explains most `d_…` blocks that traces show executing.
 
+**Two further confirmed instances (2026-07-29, same campaign).** (a) A
+`CALL` whose callee fetches one inline message-id byte de-syncs the tiler
+so thoroughly that the *following real instruction* — bytes
+`B6 AF 11 1C 04`, i.e. `OR V@>111C,>04` — decompiles as the nonsense
+statement `w_8311 /= 0x1C04`: not dropped, *mis-decoded*, which is worse
+for an annotator because it reads as plausible code. (b) A function whose
+first statement is `CALL >E00E` + inline byte is silently truncated after
+that call (the tiler treats the inline byte as the start of the next
+tile and gives up), hiding ~80 bytes of real logic that a GROM-trace
+seeded re-disassembly recovered. Both were caught only because runtime
+traces contradicted the listing — reinforcing both suggested directions
+(decode dispatch tables; accept trace-seeded entries) and adding a third:
+model the small set of known inline-argument callees (`>E00E` message
+print being the most common) directly in the tiler.
+
 ## F-002 · Probe: no raw binary memory export (2026-07-28)
 
 **Symptom.** Extracting large VRAM/CPU regions for offline analysis means
