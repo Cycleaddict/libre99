@@ -17,6 +17,11 @@ two reference points the project already respects:
 The goal of the roadmap is not only a list of features but a *shape* for adding
 them so the codebase stays clean and each capability is independent.
 
+**Incoming work items:** [FINDINGS.md](FINDINGS.md) collects concrete
+defects and improvement opportunities surfaced by heavy real-world use of
+the toolchain (decompiler entry discovery, probe ergonomics, a firmware
+fidelity question). Triage new roadmap items from there.
+
 ---
 
 ## Road to 0.1.0 — the first public release (early testing)
