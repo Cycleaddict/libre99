@@ -1,0 +1,964 @@
+{
+  "atlas_version": 1,
+  "package": "tod-stairs-r2-causal-chain",
+  "title": "Tunnels of Doom stairs-descend: predicate, branch, and state mutations",
+  "summary": "Seeded from the accepted R2 mutable-state provenance result. Every fact, relationship, and label here is transcribed from tracked documentation; no trace, decompilation, media, or owner path is stored.",
+  "seeded_from": [
+    "docs/RECONSTRUCTION-NEXT.md (R2 — Mutable-state provenance)",
+    "docs/TOD-GENERALIZATION.md (R2 mutable-state resolution)"
+  ],
+
+  "evidence": [
+    {
+      "id": "ev.doc.tod-generalization",
+      "kind": "tracked-document",
+      "ref": "docs/TOD-GENERALIZATION.md",
+      "detail": "R2 mutable-state resolution: state map, causal sequence and native boundary, labels and leftovers"
+    },
+    {
+      "id": "ev.doc.reconstruction-next",
+      "kind": "tracked-document",
+      "ref": "docs/RECONSTRUCTION-NEXT.md",
+      "detail": "R2 — Mutable-state provenance: accepted bounded-capture result and retained uncertainties"
+    },
+    {
+      "id": "ev.doc.gpl-opcode-st",
+      "kind": "tracked-document",
+      "ref": "docs/TOD-GENERALIZATION.md (Labels and leftovers)",
+      "detail": "the accepted result labels >BE as GPL ST source-confirmed; the atlas does not invent a primary-source citation that the tracked result does not name"
+    },
+    {
+      "id": "ev.exp.mtrace-positive",
+      "kind": "owner-local-experiment",
+      "ref": "tod-mvp/mtrace-stairs-positive",
+      "detail": "positive spawn checkpoint, `hold fctn x`, bounded mtrace window, two fresh probe processes with byte-identical records",
+      "counts": {"frames": 60, "filtered_accesses": 107, "repeats": 2}
+    },
+    {
+      "id": "ev.exp.mtrace-negative",
+      "kind": "owner-local-experiment",
+      "ref": "tod-mvp/mtrace-stairs-negative",
+      "detail": "held-out later-room checkpoint, same input, window, and repeat discipline",
+      "counts": {"frames": 60, "filtered_accesses": 67, "repeats": 2}
+    }
+  ],
+
+  "entities": [
+    {
+      "id": "tod.stairs-descend",
+      "kind": "subsystem",
+      "name": "Tunnels of Doom stairs-descend transition",
+      "order": 0,
+      "detail": "One bounded candidate subsystem: down-arrow input, stairs eligibility predicate, accepted branch, transition-counter mutation, later cached copy, and the visible DESCENDING effect"
+    },
+
+    {
+      "id": "tod.experiment.positive-stairs",
+      "kind": "experiment",
+      "name": "positive spawn-room stairs experiment",
+      "subsystem": "tod.stairs-descend",
+      "order": 1,
+      "detail": "stable scenario identity spanning the accepted positive campaign and bounded mtrace evidence"
+    },
+    {
+      "id": "tod.experiment.negative-stairs",
+      "kind": "experiment",
+      "name": "held-out later-room negative experiment",
+      "subsystem": "tod.stairs-descend",
+      "order": 2,
+      "detail": "stable scenario identity spanning the held-out negative campaign and bounded mtrace evidence"
+    },
+
+    {
+      "id": "tod.input.down-arrow",
+      "kind": "input",
+      "name": "FCTN+X down-arrow chord held from the spawn room",
+      "subsystem": "tod.stairs-descend",
+      "order": 10
+    },
+
+    {
+      "id": "tod.routine.gpl-descend-check",
+      "kind": "routine",
+      "name": "GPL stairs-descend predicate and transition routine",
+      "subsystem": "tod.stairs-descend",
+      "order": 11,
+      "address": ">6654",
+      "space": "cartridge-grom",
+      "detail": "bounded by the armed GPL stream window >6654..>66D2; the routine's true entry and exit are not recovered"
+    },
+    {
+      "id": "tod.routine.gpl-redraw-copy",
+      "kind": "routine",
+      "name": "GPL post-transition redraw/setup path",
+      "subsystem": "tod.stairs-descend",
+      "order": 12,
+      "address": ">A798",
+      "space": "cartridge-grom",
+      "detail": "only the observed ST site is bounded; the routine's entry is not recovered"
+    },
+    {
+      "id": "tod.routine.native-gpl-interpreter",
+      "kind": "routine",
+      "name": "console-ROM GPL interpreter (native TMS9900)",
+      "subsystem": "tod.stairs-descend",
+      "order": 13,
+      "space": "console-rom",
+      "detail": "supplies the GPL value loader and the VDP data-port accessors that perform every filtered access"
+    },
+
+    {
+      "id": "tod.op.gpl-669B",
+      "kind": "operation",
+      "name": "GPL comparison of the key byte with the down-arrow code",
+      "subsystem": "tod.stairs-descend",
+      "order": 20,
+      "address": ">669B",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.op.gpl-66A0",
+      "kind": "operation",
+      "name": "GPL first predicate comparison (accepts 04)",
+      "subsystem": "tod.stairs-descend",
+      "order": 21,
+      "address": ">66A0",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.op.gpl-66A7",
+      "kind": "operation",
+      "name": "GPL second predicate comparison (requires 06)",
+      "subsystem": "tod.stairs-descend",
+      "order": 22,
+      "address": ">66A7",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.op.gpl-66AC",
+      "kind": "operation",
+      "name": "GPL rejected-path branch (branch bytes >66AC..>66AD)",
+      "subsystem": "tod.stairs-descend",
+      "order": 23,
+      "address": ">66AC",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.op.gpl-663F",
+      "kind": "operation",
+      "name": "GPL rejected-path continuation target",
+      "subsystem": "tod.stairs-descend",
+      "order": 24,
+      "address": ">663F",
+      "space": "cartridge-grom",
+      "detail": "the negative run resumes here; its own behavior lies outside the armed window"
+    },
+    {
+      "id": "tod.op.gpl-66AE",
+      "kind": "operation",
+      "name": "GPL comparison of the secondary flag with 01",
+      "subsystem": "tod.stairs-descend",
+      "order": 25,
+      "address": ">66AE",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.op.gpl-66B5",
+      "kind": "operation",
+      "name": "GPL comparison of >10FE with the transition counter",
+      "subsystem": "tod.stairs-descend",
+      "order": 26,
+      "address": ">66B5",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.op.gpl-66C7",
+      "kind": "operation",
+      "name": "GPL INC of the transition counter",
+      "subsystem": "tod.stairs-descend",
+      "order": 27,
+      "address": ">66C7",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.op.gpl-66CB",
+      "kind": "operation",
+      "name": "GPL ST of an immediate byte into the predicate cell",
+      "subsystem": "tod.stairs-descend",
+      "order": 28,
+      "address": ">66CB",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.op.gpl-A798",
+      "kind": "operation",
+      "name": "GPL ST copying the new transition counter",
+      "subsystem": "tod.stairs-descend",
+      "order": 29,
+      "address": ">A798",
+      "space": "cartridge-grom"
+    },
+
+    {
+      "id": "tod.op.native-08B0",
+      "kind": "operation",
+      "name": "native GPL value-loader byte read",
+      "subsystem": "tod.stairs-descend",
+      "order": 30,
+      "address": ">08B0",
+      "space": "console-rom"
+    },
+    {
+      "id": "tod.op.native-08CE",
+      "kind": "operation",
+      "name": "native VDP data-port read for GPL comparisons",
+      "subsystem": "tod.stairs-descend",
+      "order": 31,
+      "address": ">08CE",
+      "space": "console-rom"
+    },
+    {
+      "id": "tod.op.native-1D2A",
+      "kind": "operation",
+      "name": "native VDP data-port write",
+      "subsystem": "tod.stairs-descend",
+      "order": 32,
+      "address": ">1D2A",
+      "space": "console-rom"
+    },
+
+    {
+      "id": "tod.state.pad-8375",
+      "kind": "state-cell",
+      "name": "GPL key-code byte",
+      "subsystem": "tod.stairs-descend",
+      "order": 40,
+      "address": ">8375",
+      "space": "scratchpad"
+    },
+    {
+      "id": "tod.state.vram-1D00",
+      "kind": "state-cell",
+      "name": "distinguishing stairs-eligibility predicate cell",
+      "subsystem": "tod.stairs-descend",
+      "order": 41,
+      "address": ">1D00",
+      "space": "vram"
+    },
+    {
+      "id": "tod.state.vram-1CE8",
+      "kind": "state-cell",
+      "name": "secondary positive-path flag",
+      "subsystem": "tod.stairs-descend",
+      "order": 42,
+      "address": ">1CE8",
+      "space": "vram"
+    },
+    {
+      "id": "tod.state.vram-10FE",
+      "kind": "state-cell",
+      "name": "value compared against the transition counter",
+      "subsystem": "tod.stairs-descend",
+      "order": 43,
+      "address": ">10FE",
+      "space": "vram"
+    },
+    {
+      "id": "tod.state.vram-1CF8",
+      "kind": "state-cell",
+      "name": "transition counter mutated on the accepted path",
+      "subsystem": "tod.stairs-descend",
+      "order": 44,
+      "address": ">1CF8",
+      "space": "vram"
+    },
+    {
+      "id": "tod.state.vram-10FA",
+      "kind": "state-cell",
+      "name": "later copy of the transition counter",
+      "subsystem": "tod.stairs-descend",
+      "order": 45,
+      "address": ">10FA",
+      "space": "vram"
+    }
+  ],
+
+  "facts": [
+    {
+      "id": "fact.subsystem.capture-window",
+      "subject": "tod.stairs-descend",
+      "predicate": "capture-window",
+      "value": "mtrace armed only for scratchpad >8375, VRAM >1D00, >1CF8, >1CE8, >10FE..>10FF, >10FA, and GPL stream >6654..>66D2",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization"],
+      "note": "bounded by design; there is no machine-wide event stream"
+    },
+    {
+      "id": "fact.subsystem.repeat-determinism",
+      "subject": "tod.stairs-descend",
+      "predicate": "repeat-determinism",
+      "value": "each checkpoint ran 60 frames with `hold fctn x` twice from fresh probe processes; owner-local filtered records were byte-identical within each pair (107 positive accesses, 67 negative)",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-positive", "ev.exp.mtrace-negative"]
+    },
+    {
+      "id": "fact.subsystem.recorder-neutrality",
+      "subject": "tod.stairs-descend",
+      "predicate": "recorder-neutrality",
+      "value": "positive save-state and PNG bytes matched a recorder-disabled control run",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+
+    {
+      "id": "fact.input.key-binding.observed",
+      "subject": "tod.input.down-arrow",
+      "predicate": "key-binding",
+      "value": "FCTN+X is the down-stairs input",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-positive"]
+    },
+
+    {
+      "id": "fact.pad-8375.value-positive",
+      "subject": "tod.state.pad-8375",
+      "predicate": "initial-value",
+      "context": "tod.experiment.positive-stairs",
+      "value": ">0A",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-positive"]
+    },
+    {
+      "id": "fact.pad-8375.value-negative",
+      "subject": "tod.state.pad-8375",
+      "predicate": "initial-value",
+      "context": "tod.experiment.negative-stairs",
+      "value": ">0A",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-negative"],
+      "note": "the key byte does not distinguish the two runs"
+    },
+    {
+      "id": "fact.pad-8375.branch-decode",
+      "subject": "tod.state.pad-8375",
+      "predicate": "branch-decode",
+      "value": "key code 0A selects the down-arrow branch at GPL >669B",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+
+    {
+      "id": "fact.vram-1D00.role",
+      "subject": "tod.state.vram-1D00",
+      "predicate": "runtime-role",
+      "value": "the cell that distinguishes the accepted from the rejected stairs path",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization", "ev.doc.reconstruction-next"]
+    },
+    {
+      "id": "fact.vram-1D00.value-positive",
+      "subject": "tod.state.vram-1D00",
+      "predicate": "initial-value",
+      "context": "tod.experiment.positive-stairs",
+      "value": ">06",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-positive"]
+    },
+    {
+      "id": "fact.vram-1D00.value-negative",
+      "subject": "tod.state.vram-1D00",
+      "predicate": "initial-value",
+      "context": "tod.experiment.negative-stairs",
+      "value": ">05",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-negative"]
+    },
+    {
+      "id": "fact.vram-1D00.store",
+      "subject": "tod.state.vram-1D00",
+      "predicate": "write",
+      "context": "tod.experiment.positive-stairs",
+      "value": ">1D00 06→05 stored by GPL ST at >66CB",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-positive"],
+      "note": "the GPL ST reads the destination's old value first"
+    },
+
+    {
+      "id": "fact.vram-1CE8.value-positive",
+      "subject": "tod.state.vram-1CE8",
+      "predicate": "initial-value",
+      "context": "tod.experiment.positive-stairs",
+      "value": ">01",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-positive"]
+    },
+    {
+      "id": "fact.vram-1CE8.path-negative",
+      "subject": "tod.state.vram-1CE8",
+      "predicate": "path-coverage",
+      "context": "tod.experiment.negative-stairs",
+      "value": "not reached",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-negative"]
+    },
+
+    {
+      "id": "fact.vram-10FE.value-positive",
+      "subject": "tod.state.vram-10FE",
+      "predicate": "initial-value",
+      "context": "tod.experiment.positive-stairs",
+      "value": ">00",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-positive"]
+    },
+    {
+      "id": "fact.vram-10FE.path-negative",
+      "subject": "tod.state.vram-10FE",
+      "predicate": "path-coverage",
+      "context": "tod.experiment.negative-stairs",
+      "value": "not reached",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-negative"]
+    },
+    {
+      "id": "fact.vram-10FE.comparison",
+      "subject": "tod.state.vram-10FE",
+      "predicate": "comparison",
+      "value": "compared against >1CF8 at GPL >66B5; equality takes the transition path in this window",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+
+    {
+      "id": "fact.vram-1CF8.value-positive",
+      "subject": "tod.state.vram-1CF8",
+      "predicate": "initial-value",
+      "context": "tod.experiment.positive-stairs",
+      "value": ">00",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-positive"]
+    },
+    {
+      "id": "fact.vram-1CF8.value-negative",
+      "subject": "tod.state.vram-1CF8",
+      "predicate": "initial-value",
+      "context": "tod.experiment.negative-stairs",
+      "value": ">01",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-negative"],
+      "note": "not read on the rejected path"
+    },
+    {
+      "id": "fact.vram-1CF8.mutation",
+      "subject": "tod.state.vram-1CF8",
+      "predicate": "write",
+      "context": "tod.experiment.positive-stairs",
+      "value": ">1CF8 00→01 by GPL INC at >66C7",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization", "ev.doc.reconstruction-next", "ev.exp.mtrace-positive"],
+      "note": "the primary transition mutation of the accepted path"
+    },
+
+    {
+      "id": "fact.vram-10FA.copy",
+      "subject": "tod.state.vram-10FA",
+      "predicate": "write",
+      "context": "tod.experiment.positive-stairs",
+      "value": ">10FA 00→01 by GPL ST at >A798, eight modeled frames later",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization", "ev.doc.reconstruction-next", "ev.exp.mtrace-positive"],
+      "note": "the ST reads >10FA=00 and >1CF8=01 before the write"
+    },
+    {
+      "id": "fact.vram-10FA.path-negative",
+      "subject": "tod.state.vram-10FA",
+      "predicate": "path-coverage",
+      "context": "tod.experiment.negative-stairs",
+      "value": "unchanged in this window",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-negative"]
+    },
+
+    {
+      "id": "fact.gpl-66A0.threshold",
+      "subject": "tod.op.gpl-66A0",
+      "predicate": "comparison",
+      "value": "first accepts 04",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "fact.gpl-66A7.outcome-positive",
+      "subject": "tod.op.gpl-66A7",
+      "predicate": "outcome",
+      "context": "tod.experiment.positive-stairs",
+      "value": "requires 06; only the positive run continues past this comparison",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-positive"]
+    },
+    {
+      "id": "fact.gpl-66A7.outcome-negative",
+      "subject": "tod.op.gpl-66A7",
+      "predicate": "outcome",
+      "context": "tod.experiment.negative-stairs",
+      "value": "the negative 05 fails the comparison and branches away at >66AC",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-negative"]
+    },
+    {
+      "id": "fact.gpl-66AC.branch-target",
+      "subject": "tod.op.gpl-66AC",
+      "predicate": "branch-target",
+      "context": "tod.experiment.negative-stairs",
+      "value": ">663F",
+      "classification": "observed",
+      "evidence": ["ev.exp.mtrace-negative"],
+      "note": "tracked documentation records the rejected path ending at branch bytes >66AC..>66AD; the recorded destination is >663F"
+    },
+    {
+      "id": "fact.gpl-66AC.no-filtered-write",
+      "subject": "tod.op.gpl-66AC",
+      "predicate": "filtered-state-writes",
+      "context": "tod.experiment.negative-stairs",
+      "value": "none; the rejected path performs no filtered state write",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-negative"]
+    },
+    {
+      "id": "fact.gpl-66CB.opcode",
+      "subject": "tod.op.gpl-66CB",
+      "predicate": "opcode",
+      "value": ">BE is GPL ST",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.gpl-opcode-st", "ev.doc.tod-generalization"]
+    },
+    {
+      "id": "fact.gpl-A798.opcode",
+      "subject": "tod.op.gpl-A798",
+      "predicate": "opcode",
+      "value": ">BE is GPL ST",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.gpl-opcode-st", "ev.doc.tod-generalization"]
+    },
+
+    {
+      "id": "fact.native-08B0.opcode",
+      "subject": "tod.op.native-08B0",
+      "predicate": "opcode",
+      "value": ">D013 (MOVB *R3,R0) in the GPL value loader",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "fact.native-08CE.opcode",
+      "subject": "tod.op.native-08CE",
+      "predicate": "opcode",
+      "value": ">D020 (MOVB @>8800,R0)",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "fact.native-1D2A.opcode",
+      "subject": "tod.op.native-1D2A",
+      "predicate": "opcode",
+      "value": ">D802 (MOVB R2,@>8C00)",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "fact.native-1D2A.gpl-register",
+      "subject": "tod.op.native-1D2A",
+      "predicate": "gpl-opcode-register",
+      "value": "R9 >BE74 on the changing writes decodes as GPL ST",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.gpl-opcode-st", "ev.doc.tod-generalization"]
+    }
+  ],
+
+  "hypotheses": [
+    {
+      "id": "hyp.vram-1D00.enum",
+      "subject": "tod.state.vram-1D00",
+      "statement": "06 is the down-stairs-eligible class in this routine; the cell's complete game-wide enum is not recovered",
+      "classification": "inferred",
+      "evidence": ["ev.doc.tod-generalization"],
+      "resolves_when": "a later bounded experiment observes the value range of >1D00 across cells and floors"
+    },
+    {
+      "id": "hyp.vram-1CE8.semantics",
+      "subject": "tod.state.vram-1CE8",
+      "statement": "the exact game meaning of the secondary positive-path flag compared with 01 at >66AE is unknown",
+      "classification": "unresolved",
+      "alternatives": ["party mode", "generated depth", "another bound"],
+      "evidence": ["ev.doc.tod-generalization"],
+      "resolves_when": "a later experiment varies party/floor setup and observes >1CE8 across those setups"
+    },
+    {
+      "id": "hyp.vram-10FE.semantics",
+      "subject": "tod.state.vram-10FE",
+      "statement": "the exact bound/limit meaning of the value compared against the transition counter at >66B5 is unknown",
+      "classification": "unresolved",
+      "alternatives": ["party mode", "generated depth", "another bound"],
+      "evidence": ["ev.doc.tod-generalization"],
+      "resolves_when": "a later experiment varies generated dungeon depth and observes >10FE"
+    },
+    {
+      "id": "hyp.vram-1CF8.name",
+      "subject": "tod.state.vram-1CF8",
+      "statement": "the counter's later use and copy are consistent with a zero-based floor/depth index; the name is not proven",
+      "classification": "inferred",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "hyp.vram-10FA.name",
+      "subject": "tod.state.vram-10FA",
+      "statement": "the destination is consistent with a cached floor value; the name is not proven",
+      "classification": "inferred",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "hyp.routine.names",
+      "subject": "tod.routine.gpl-descend-check",
+      "statement": "game-level routine names, the map representation, and facing bytes remain unresolved",
+      "classification": "unresolved",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "hyp.gpl-663F.semantics",
+      "subject": "tod.op.gpl-663F",
+      "statement": "the rejected path's continuation behavior at >663F lies outside the armed window and is not characterized",
+      "classification": "unresolved",
+      "evidence": ["ev.exp.mtrace-negative"],
+      "resolves_when": "a later bounded window covers >663F on the rejected path"
+    }
+  ],
+
+  "relationships": [
+    {
+      "id": "rel.op-669B.part-of",
+      "order": 60,
+      "from": "tod.op.gpl-669B",
+      "kind": "part-of",
+      "to": "tod.routine.gpl-descend-check",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "rel.input.causes-key",
+      "order": 2,
+      "from": "tod.input.down-arrow",
+      "kind": "causes",
+      "to": "tod.state.pad-8375",
+      "classification": "observed",
+      "detail": "the held chord is present as >8375=0A in both runs",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-positive", "ev.exp.mtrace-negative"]
+    },
+    {
+      "id": "rel.native-08B0.reads-key",
+      "order": 3,
+      "from": "tod.op.native-08B0",
+      "kind": "reads",
+      "to": "tod.state.pad-8375",
+      "classification": "observed",
+      "detail": "reads >8375=0A in both runs",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "rel.gpl-669B.executed-by",
+      "order": 4,
+      "from": "tod.op.gpl-669B",
+      "kind": "executed-by",
+      "to": "tod.op.native-08B0",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "rel.gpl-669B.compares-key",
+      "order": 5,
+      "from": "tod.op.gpl-669B",
+      "kind": "compares",
+      "to": "tod.state.pad-8375",
+      "classification": "source-confirmed",
+      "detail": "0A selects the down-arrow branch",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "rel.gpl-669B.precedes-66A0",
+      "order": 6,
+      "from": "tod.op.gpl-669B",
+      "kind": "precedes",
+      "to": "tod.op.gpl-66A0",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "rel.native-08CE.reads-1D00",
+      "order": 7,
+      "from": "tod.op.native-08CE",
+      "kind": "reads",
+      "to": "tod.state.vram-1D00",
+      "classification": "observed",
+      "detail": "06 positive, 05 negative",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-positive", "ev.exp.mtrace-negative"]
+    },
+    {
+      "id": "rel.gpl-66A0.compares-1D00",
+      "order": 8,
+      "from": "tod.op.gpl-66A0",
+      "kind": "compares",
+      "to": "tod.state.vram-1D00",
+      "classification": "observed",
+      "detail": "first accepts 04",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "rel.gpl-66A0.executed-by",
+      "order": 9,
+      "from": "tod.op.gpl-66A0",
+      "kind": "executed-by",
+      "to": "tod.op.native-08CE",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "rel.gpl-66A7.compares-1D00",
+      "order": 10,
+      "from": "tod.op.gpl-66A7",
+      "kind": "compares",
+      "to": "tod.state.vram-1D00",
+      "classification": "observed",
+      "detail": "requires 06; this is the deciding predicate",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "rel.gpl-66A7.executed-by",
+      "order": 11,
+      "from": "tod.op.gpl-66A7",
+      "kind": "executed-by",
+      "to": "tod.op.native-08CE",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "rel.gpl-66A7.continues-positive",
+      "order": 12,
+      "from": "tod.op.gpl-66A7",
+      "kind": "continues-to",
+      "to": "tod.op.gpl-66AE",
+      "classification": "observed",
+      "context": "tod.experiment.positive-stairs",
+      "detail": "positive outcome: 06 passes, the accepted path continues",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-positive"]
+    },
+    {
+      "id": "rel.gpl-66A7.rejects-negative",
+      "order": 13,
+      "from": "tod.op.gpl-66A7",
+      "kind": "precedes",
+      "to": "tod.op.gpl-66AC",
+      "classification": "observed",
+      "context": "tod.experiment.negative-stairs",
+      "detail": "negative outcome: 05 fails and reaches the branch bytes",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-negative"]
+    },
+    {
+      "id": "rel.gpl-66AC.branches-to-663F",
+      "order": 14,
+      "from": "tod.op.gpl-66AC",
+      "kind": "branches-to",
+      "to": "tod.op.gpl-663F",
+      "classification": "observed",
+      "context": "tod.experiment.negative-stairs",
+      "detail": "negative outcome: the rejected path leaves the routine with no filtered state write",
+      "evidence": ["ev.exp.mtrace-negative"]
+    },
+    {
+      "id": "rel.gpl-66AE.compares-1CE8",
+      "order": 15,
+      "from": "tod.op.gpl-66AE",
+      "kind": "compares",
+      "to": "tod.state.vram-1CE8",
+      "classification": "observed",
+      "context": "tod.experiment.positive-stairs",
+      "detail": "compared with 01",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-positive"]
+    },
+    {
+      "id": "rel.gpl-66AE.precedes-66B5",
+      "order": 16,
+      "from": "tod.op.gpl-66AE",
+      "kind": "precedes",
+      "to": "tod.op.gpl-66B5",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "rel.gpl-66B5.compares-10FE",
+      "order": 17,
+      "from": "tod.op.gpl-66B5",
+      "kind": "compares",
+      "to": "tod.state.vram-10FE",
+      "classification": "observed",
+      "context": "tod.experiment.positive-stairs",
+      "detail": "compared against >1CF8; equality takes the transition path",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-positive"]
+    },
+    {
+      "id": "rel.gpl-66B5.precedes-66C7",
+      "order": 18,
+      "from": "tod.op.gpl-66B5",
+      "kind": "precedes",
+      "to": "tod.op.gpl-66C7",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "rel.gpl-66C7.reads-1CF8",
+      "order": 19,
+      "from": "tod.op.gpl-66C7",
+      "kind": "reads",
+      "to": "tod.state.vram-1CF8",
+      "classification": "observed",
+      "context": "tod.experiment.positive-stairs",
+      "detail": "GPL INC reads the old value 00",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-positive"]
+    },
+    {
+      "id": "rel.gpl-66C7.writes-1CF8",
+      "order": 20,
+      "from": "tod.op.gpl-66C7",
+      "kind": "writes",
+      "to": "tod.state.vram-1CF8",
+      "classification": "observed",
+      "context": "tod.experiment.positive-stairs",
+      "detail": "00→01, the primary transition mutation",
+      "evidence": ["ev.doc.tod-generalization", "ev.doc.reconstruction-next", "ev.exp.mtrace-positive"]
+    },
+    {
+      "id": "rel.gpl-66C7.executed-by",
+      "order": 21,
+      "from": "tod.op.gpl-66C7",
+      "kind": "executed-by",
+      "to": "tod.op.native-1D2A",
+      "classification": "observed",
+      "detail": "the native writer performs the VDP data-port write",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "rel.gpl-66C7.precedes-66CB",
+      "order": 22,
+      "from": "tod.op.gpl-66C7",
+      "kind": "precedes",
+      "to": "tod.op.gpl-66CB",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "rel.gpl-66CB.writes-1D00",
+      "order": 23,
+      "from": "tod.op.gpl-66CB",
+      "kind": "writes",
+      "to": "tod.state.vram-1D00",
+      "classification": "observed",
+      "context": "tod.experiment.positive-stairs",
+      "detail": "06→05, consuming the eligibility this pass",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-positive"]
+    },
+    {
+      "id": "rel.gpl-66CB.executed-by",
+      "order": 24,
+      "from": "tod.op.gpl-66CB",
+      "kind": "executed-by",
+      "to": "tod.op.native-1D2A",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "rel.gpl-66CB.precedes-A798",
+      "order": 25,
+      "from": "tod.op.gpl-66CB",
+      "kind": "precedes",
+      "to": "tod.op.gpl-A798",
+      "classification": "observed",
+      "detail": "eight modeled frames later, on the redraw/setup path",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "rel.gpl-A798.part-of",
+      "order": 61,
+      "from": "tod.op.gpl-A798",
+      "kind": "part-of",
+      "to": "tod.routine.gpl-redraw-copy",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "rel.gpl-A798.reads-1CF8",
+      "order": 27,
+      "from": "tod.op.gpl-A798",
+      "kind": "reads",
+      "to": "tod.state.vram-1CF8",
+      "classification": "observed",
+      "context": "tod.experiment.positive-stairs",
+      "detail": "reads the new value 01",
+      "evidence": ["ev.doc.tod-generalization", "ev.exp.mtrace-positive"]
+    },
+    {
+      "id": "rel.gpl-A798.writes-10FA",
+      "order": 28,
+      "from": "tod.op.gpl-A798",
+      "kind": "writes",
+      "to": "tod.state.vram-10FA",
+      "classification": "observed",
+      "context": "tod.experiment.positive-stairs",
+      "detail": "00→01, the later copy of the transition counter",
+      "evidence": ["ev.doc.tod-generalization", "ev.doc.reconstruction-next", "ev.exp.mtrace-positive"]
+    },
+    {
+      "id": "rel.gpl-A798.executed-by",
+      "order": 29,
+      "from": "tod.op.gpl-A798",
+      "kind": "executed-by",
+      "to": "tod.op.native-1D2A",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "rel.native-08B0.part-of",
+      "order": 62,
+      "from": "tod.op.native-08B0",
+      "kind": "part-of",
+      "to": "tod.routine.native-gpl-interpreter",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "rel.native-08CE.part-of",
+      "order": 63,
+      "from": "tod.op.native-08CE",
+      "kind": "part-of",
+      "to": "tod.routine.native-gpl-interpreter",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization"]
+    },
+    {
+      "id": "rel.native-1D2A.part-of",
+      "order": 64,
+      "from": "tod.op.native-1D2A",
+      "kind": "part-of",
+      "to": "tod.routine.native-gpl-interpreter",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-generalization"]
+    }
+  ],
+
+  "queries": [
+    {
+      "id": "q.tod.stairs-descend",
+      "subsystem": "tod.stairs-descend",
+      "question": "Which input, predicate, branch, mutations, and visible effect make up the accepted Tunnels of Doom stairs-descend transition, and how well is each part evidenced?",
+      "answer": "The held FCTN+X chord appears as >8375=0A in both the positive and the held-out-negative run, so the key does not decide the outcome. VRAM >1D00 does: GPL >66A0 accepts 04 and >66A7 then requires 06, so the positive 06 continues while the negative 05 branches at >66AC to >663F and writes no filtered state. The accepted path reads >1CE8=01 and >10FE=00, increments >1CF8 00→01 at GPL >66C7, stores >1D00 06→05 at >66CB, and eight modeled frames later copies >1CF8 into >10FA 00→01 at >A798; native >08B0/>D013, >08CE/>D020, and >1D2A/>D802 perform the reads and writes. The redraw produces the DESCENDING interstitial. Broad cell names, the >1D00 enum, and >1CE8/>10FE semantics stay evidence-labeled rather than guessed."
+    }
+  ]
+}

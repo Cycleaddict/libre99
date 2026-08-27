@@ -239,6 +239,17 @@ impl Cpu {
         self.interrupt_request = level;
     }
 
+    /// Whether the next [`step`](Self::step) will fetch and execute an
+    /// instruction rather than accept an interrupt or remain idle. The machine
+    /// uses this only to avoid attaching instruction provenance to bus accesses
+    /// made by interrupt entry itself.
+    pub(crate) fn instruction_will_execute(&self) -> bool {
+        let accepting_interrupt = self
+            .interrupt_request
+            .is_some_and(|level| (level as u16) <= (self.st & ST_MASK));
+        !accepting_interrupt && !self.idle
+    }
+
     /// Power-on / RESET: load WP and PC from the reset vector at `>0000`/`>0002`
     /// and disable interrupts (mask = 0). The console ROM's vector is
     /// `WP=>83E0, PC=>0024`.

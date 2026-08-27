@@ -1,0 +1,235 @@
+{
+  "atlas_version": 1,
+  "package": "tod-stairs-visible-effect",
+  "title": "Tunnels of Doom stairs-descend: the visible DESCENDING effect",
+  "summary": "Appended package. It adds the gate-2 visible effect, its writers, and the held-out manual corroboration to the entities already published by tod-stairs-r2-causal-chain; it rewrites nothing in that package.",
+  "seeded_from": [
+    "docs/TOD-GENERALIZATION.md (nine-run determinism, blind causal answer, case C, held-out 4apedia read, labels and leftovers)"
+  ],
+
+  "evidence": [
+    {
+      "id": "ev.exp.campaign-baseline",
+      "kind": "owner-local-experiment",
+      "ref": "tod-mvp/tod-descend-ab group baseline",
+      "detail": "spawn room, no setup input; causal digest prefix a8193de0",
+      "counts": {"runs": 3, "vdp_writes": 0, "changing_writes": 0}
+    },
+    {
+      "id": "ev.exp.campaign-descend",
+      "kind": "owner-local-experiment",
+      "ref": "tod-mvp/tod-descend-ab group descend (run descend-01)",
+      "detail": "spawn room, `hold fctn x`; causal digest prefix 3e8a5899, reproduced by --only descend-01",
+      "counts": {"runs": 3, "vdp_writes": 1186, "changing_writes": 282}
+    },
+    {
+      "id": "ev.exp.campaign-heldout-c",
+      "kind": "owner-local-experiment",
+      "ref": "tod-mvp/tod-descend-ab group held-out C",
+      "detail": "later room, same chord; causal digest prefix e001e3f6, no DESCENDING cluster",
+      "counts": {"runs": 3, "vdp_writes": 312, "changing_writes": 40}
+    },
+    {
+      "id": "ev.src.4apedia-manual",
+      "kind": "held-out-source",
+      "ref": "https://4apedia.com/index.php/Tunnels_of_Doom (published manual transcription)",
+      "detail": "read only after preregistering identities and predictions; corroborates this PHM 3042 product, not a byte-identical listing"
+    }
+  ],
+
+  "entities": [
+    {
+      "id": "tod.effect.descending-screen",
+      "kind": "effect",
+      "name": "DESCENDING interstitial screen",
+      "subsystem": "tod.stairs-descend",
+      "order": 50,
+      "space": "vram-name-table",
+      "detail": "name-table VRAM >0000..>02FF rewritten to a solid pattern plus the word DESCENDING at >0264"
+    },
+    {
+      "id": "tod.op.native-15C6",
+      "kind": "operation",
+      "name": "native console-ROM name-table writer",
+      "subsystem": "tod.stairs-descend",
+      "order": 33,
+      "address": ">15C6",
+      "space": "console-rom"
+    },
+    {
+      "id": "tod.op.native-1F7A",
+      "kind": "operation",
+      "name": "native console-ROM name-table writer",
+      "subsystem": "tod.stairs-descend",
+      "order": 34,
+      "address": ">1F7A",
+      "space": "console-rom"
+    }
+  ],
+
+  "facts": [
+    {
+      "id": "fact.input.key-binding.corroborated",
+      "subject": "tod.input.down-arrow",
+      "predicate": "key-binding",
+      "value": "FCTN+X is the down-stairs input",
+      "classification": "corroborated",
+      "evidence": ["ev.src.4apedia-manual"],
+      "note": "identical to the observed assertion in tod-stairs-r2-causal-chain; corroboration adds a label, not a different value"
+    },
+    {
+      "id": "fact.input.precondition",
+      "subject": "tod.input.down-arrow",
+      "predicate": "precondition",
+      "value": "FCTN+X descends only on a stair cell",
+      "classification": "corroborated",
+      "evidence": ["ev.src.4apedia-manual"],
+      "note": "bounds the held-out later-room prediction: after leaving the stair cell the chord should not repeat DESCENDING"
+    },
+    {
+      "id": "fact.effect.name-table",
+      "subject": "tod.effect.descending-screen",
+      "predicate": "vram-extent",
+      "context": "tod.experiment.positive-stairs",
+      "value": "name-table >0000..>02FF rewritten to a solid pattern, with the word DESCENDING at >0264",
+      "classification": "observed",
+      "evidence": ["ev.exp.campaign-descend"]
+    },
+    {
+      "id": "fact.effect.view-transition",
+      "subject": "tod.effect.descending-screen",
+      "predicate": "view-transition",
+      "context": "tod.experiment.positive-stairs",
+      "value": "spawn room (top-down room camera) → DESCENDING interstitial",
+      "classification": "observed",
+      "evidence": ["ev.exp.campaign-descend"]
+    },
+    {
+      "id": "fact.effect.writer-pcs",
+      "subject": "tod.effect.descending-screen",
+      "predicate": "writer-pcs",
+      "value": "changing VDP writes come from console-ROM PCs >15C6, >1D2A, and >1F7A",
+      "classification": "observed",
+      "evidence": ["ev.exp.campaign-descend"]
+    },
+    {
+      "id": "fact.effect.gpl-stream",
+      "subject": "tod.effect.descending-screen",
+      "predicate": "gpl-stream",
+      "value": "cartridge GROM >66xx / >86xx / >C1xx executed by the console GPL interpreter; no cartridge CPU ROM is mounted",
+      "classification": "observed",
+      "evidence": ["ev.exp.campaign-descend"]
+    },
+    {
+      "id": "fact.effect.path-negative",
+      "subject": "tod.effect.descending-screen",
+      "predicate": "path-coverage",
+      "context": "tod.experiment.negative-stairs",
+      "value": "no DESCENDING cluster; only 40 name-table bytes at >02E5..>02FA change",
+      "classification": "observed",
+      "evidence": ["ev.exp.campaign-heldout-c"]
+    },
+    {
+      "id": "fact.effect.multi-second-descent",
+      "subject": "tod.effect.descending-screen",
+      "predicate": "duration",
+      "value": "the descent takes multiple seconds in the published manual's description",
+      "classification": "corroborated",
+      "evidence": ["ev.src.4apedia-manual"]
+    },
+    {
+      "id": "fact.subsystem.campaign-determinism",
+      "subject": "tod.stairs-descend",
+      "predicate": "campaign-determinism",
+      "value": "nine gate-2 runs all succeeded, one causal digest per group: baseline a8193de0 (0/0 writes), descend 3e8a5899 (1186/282), held-out C e001e3f6 (312/40); --only descend-01 reproduced 3e8a5899",
+      "classification": "observed",
+      "evidence": ["ev.exp.campaign-baseline", "ev.exp.campaign-descend", "ev.exp.campaign-heldout-c"]
+    }
+  ],
+
+  "hypotheses": [
+    {
+      "id": "hyp.effect.other-vram",
+      "subject": "tod.effect.descending-screen",
+      "statement": "other VRAM regions touched during the transition (>0FAxx, >34xx) remain unresolved as sprite, pattern, or FMT data",
+      "classification": "unresolved",
+      "evidence": ["ev.exp.campaign-descend"]
+    },
+    {
+      "id": "hyp.effect.out-of-scope",
+      "subject": "tod.effect.descending-screen",
+      "statement": "the dungeon generator, combat, and the QUEST database are out of scope for this subsystem and are not claimed",
+      "classification": "unresolved",
+      "evidence": ["ev.exp.campaign-descend"]
+    }
+  ],
+
+  "relationships": [
+    {
+      "id": "rel.native-15C6.part-of",
+      "order": 65,
+      "from": "tod.op.native-15C6",
+      "kind": "part-of",
+      "to": "tod.routine.native-gpl-interpreter",
+      "classification": "observed",
+      "evidence": ["ev.exp.campaign-descend"]
+    },
+    {
+      "id": "rel.native-1F7A.part-of",
+      "order": 66,
+      "from": "tod.op.native-1F7A",
+      "kind": "part-of",
+      "to": "tod.routine.native-gpl-interpreter",
+      "classification": "observed",
+      "evidence": ["ev.exp.campaign-descend"]
+    },
+    {
+      "id": "rel.1CF8.precedes-effect",
+      "order": 40,
+      "from": "tod.state.vram-1CF8",
+      "kind": "precedes",
+      "to": "tod.effect.descending-screen",
+      "classification": "observed",
+      "context": "tod.experiment.positive-stairs",
+      "detail": "the counter mutation happens inside the same window that redraws the screen",
+      "evidence": ["ev.exp.campaign-descend", "ev.exp.mtrace-positive"]
+    },
+    {
+      "id": "rel.routine.causes-effect",
+      "order": 41,
+      "from": "tod.routine.gpl-descend-check",
+      "kind": "causes",
+      "to": "tod.effect.descending-screen",
+      "classification": "observed",
+      "detail": "positive outcome: the accepted GPL path drives the interpreter's name-table rewrite",
+      "evidence": ["ev.exp.campaign-descend"]
+    },
+    {
+      "id": "rel.native-15C6.causes-effect",
+      "order": 42,
+      "from": "tod.op.native-15C6",
+      "kind": "causes",
+      "to": "tod.effect.descending-screen",
+      "classification": "observed",
+      "evidence": ["ev.exp.campaign-descend"]
+    },
+    {
+      "id": "rel.native-1D2A.causes-effect",
+      "order": 43,
+      "from": "tod.op.native-1D2A",
+      "kind": "causes",
+      "to": "tod.effect.descending-screen",
+      "classification": "observed",
+      "evidence": ["ev.exp.campaign-descend"]
+    },
+    {
+      "id": "rel.native-1F7A.causes-effect",
+      "order": 44,
+      "from": "tod.op.native-1F7A",
+      "kind": "causes",
+      "to": "tod.effect.descending-screen",
+      "classification": "observed",
+      "evidence": ["ev.exp.campaign-descend"]
+    }
+  ]
+}

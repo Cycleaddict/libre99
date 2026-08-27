@@ -1,0 +1,672 @@
+{
+  "atlas_version": 1,
+  "package": "tod-dungeon-reconnaissance",
+  "title": "Tunnels of Doom bounded dungeon-generator reconnaissance",
+  "summary": "Append-only reconnaissance package. It records the authentic generation boundary, the neutral candidate payload, seed-controlled mutation phases, exact GPL/native writers, deterministic baseline and varied-seed experiments, and the explicit no-go for full generator reconstruction as one immediate package. No commercial bytes or derived artifacts are stored.",
+  "seeded_from": "docs/TOD-DUNGEON-RECONNAISSANCE.md and byte-identical owner-local GSL recovery of the matching cartridge",
+  "evidence": [
+    {
+      "id": "ev.doc.tod-dungeon-recon",
+      "kind": "tracked-document",
+      "ref": "docs/TOD-DUNGEON-RECONNAISSANCE.md",
+      "detail": "declared matrix, observed boundaries and counts, static recovery, evidence labels, retained uncertainty, and economic decision"
+    },
+    {
+      "id": "ev.exp.dungeon-seed-0000",
+      "kind": "owner-local-experiment",
+      "ref": "tod-mvp/dungeon-recon-seed-0000",
+      "detail": "same POINT OF NO RETURN checkpoint, restored seed 0000, PROC'D, fixed 12000-frame window; two fresh processes with byte-identical filtered records, coverage, and save states",
+      "counts": {"runs": 2, "frames_per_run": 12000, "filtered_accesses": 9400, "candidate_writes": 1184, "grom_addresses": 6144, "native_pcs": 997, "different_candidate_bytes_vs_seed_1234": 220}
+    },
+    {
+      "id": "ev.exp.dungeon-seed-1234",
+      "kind": "owner-local-experiment",
+      "ref": "tod-mvp/dungeon-recon-seed-1234",
+      "detail": "same checkpoint and window; only the diagnostic seed word changed to 1234 before recording; two fresh processes with byte-identical filtered records, coverage, and save states",
+      "counts": {"runs": 2, "frames_per_run": 12000, "filtered_accesses": 9488, "candidate_writes": 1142, "grom_addresses": 6169, "native_pcs": 997, "different_candidate_bytes_vs_seed_0000": 220}
+    },
+    {
+      "id": "ev.exp.dungeon-entry-breadcrumb",
+      "kind": "owner-local-experiment",
+      "ref": "tod-mvp/dungeon-recon-entry-breadcrumb",
+      "detail": "bounded 80-frame GPL fetch breadcrumb from the same checkpoint; proves CALL 63E3 to 8002 and branch to 8246",
+      "counts": {"frames": 80, "grom_fetches": 10725}
+    },
+    {
+      "id": "ev.static.gsl-dungeon-recon",
+      "kind": "owner-local-experiment",
+      "ref": "tod-mvp/gsl-dungeon-recon-62F4-852F",
+      "detail": "matching five-page cartridge recovered with trace entries 62F4 and 852F; byte-identical GSL roundtrip with 263 functions, 5185 statements, 19 raw-byte instructions, and zero demotions; listing and bytes remain owner-local"
+    }
+  ],
+  "entities": [
+    {
+      "id": "tod.dungeon-generation",
+      "kind": "subsystem",
+      "name": "Tunnels of Doom dungeon-generation reconnaissance",
+      "order": 0,
+      "detail": "bounded to entry, per-floor candidate payload mutation, random control, later payload read, and visible completion; later stocking and complete generator semantics are excluded"
+    },
+    {
+      "id": "tod.dungeon.experiment.seed-0000",
+      "kind": "experiment",
+      "name": "restored-seed baseline generation",
+      "subsystem": "tod.dungeon-generation",
+      "order": 1,
+      "detail": "two fresh 12000-frame generations from the same checkpoint with seed 0000"
+    },
+    {
+      "id": "tod.dungeon.experiment.seed-1234",
+      "kind": "experiment",
+      "name": "controlled seed-1234 generation",
+      "subsystem": "tod.dungeon-generation",
+      "order": 2,
+      "detail": "two fresh 12000-frame generations differing from baseline only by a pre-recording seed poke"
+    },
+    {
+      "id": "tod.dungeon.input.seed-variation",
+      "kind": "input",
+      "name": "controlled random-seed word",
+      "subsystem": "tod.dungeon-generation",
+      "order": 10,
+      "address": ">83C0",
+      "space": "scratchpad"
+    },
+    {
+      "id": "tod.dungeon.routine.outer-62F4",
+      "kind": "routine",
+      "name": "outer dungeon-generation and per-floor loop",
+      "subsystem": "tod.dungeon-generation",
+      "order": 20,
+      "address": ">62F4",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.dungeon.routine.floor-8246",
+      "kind": "routine",
+      "name": "per-floor candidate-buffer routine",
+      "subsystem": "tod.dungeon-generation",
+      "order": 21,
+      "address": ">8246",
+      "space": "cartridge-grom",
+      "detail": "returns at >84F1; includes reset, seed-dependent value placement, stride stores, and additional indexed stores"
+    },
+    {
+      "id": "tod.dungeon.routine.reset-8605",
+      "kind": "routine",
+      "name": "candidate reset/normalization pass",
+      "subsystem": "tod.dungeon-generation",
+      "order": 22,
+      "address": ">8605",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.dungeon.routine.placement-852F",
+      "kind": "routine",
+      "name": "seed-dependent candidate value placement",
+      "subsystem": "tod.dungeon-generation",
+      "order": 23,
+      "address": ">852F",
+      "space": "cartridge-grom",
+      "detail": "trace-discovered decodable entry immediately after unsupported XGPL byte >1C at >852E"
+    },
+    {
+      "id": "tod.dungeon.routine.reader-A3B5",
+      "kind": "routine",
+      "name": "later candidate-byte reader",
+      "subsystem": "tod.dungeon-generation",
+      "order": 24,
+      "address": ">A3B5",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.dungeon.op.gpl-63E3",
+      "kind": "operation",
+      "name": "GPL CALL through >8002 to the per-floor generator",
+      "subsystem": "tod.dungeon-generation",
+      "order": 30,
+      "address": ">63E3",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.dungeon.op.gpl-8611",
+      "kind": "operation",
+      "name": "GPL AND normalization of an indexed candidate byte",
+      "subsystem": "tod.dungeon-generation",
+      "order": 31,
+      "address": ">8611",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.dungeon.op.gpl-863D",
+      "kind": "operation",
+      "name": "GPL store of >6B to an indexed candidate byte",
+      "subsystem": "tod.dungeon-generation",
+      "order": 32,
+      "address": ">863D",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.dungeon.op.gpl-8553",
+      "kind": "operation",
+      "name": "GPL seed-dependent value store to the candidate payload",
+      "subsystem": "tod.dungeon-generation",
+      "order": 33,
+      "address": ">8553",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.dungeon.op.gpl-8339",
+      "kind": "operation",
+      "name": "GPL candidate store with following stride >0020",
+      "subsystem": "tod.dungeon-generation",
+      "order": 34,
+      "address": ">8339",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.dungeon.op.gpl-83D8",
+      "kind": "operation",
+      "name": "GPL candidate store with following stride >0001",
+      "subsystem": "tod.dungeon-generation",
+      "order": 35,
+      "address": ">83D8",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.dungeon.op.gpl-845F",
+      "kind": "operation",
+      "name": "GPL seed-dependent additional indexed store",
+      "subsystem": "tod.dungeon-generation",
+      "order": 36,
+      "address": ">845F",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.dungeon.op.gpl-847E",
+      "kind": "operation",
+      "name": "GPL seed-dependent additional indexed store",
+      "subsystem": "tod.dungeon-generation",
+      "order": 37,
+      "address": ">847E",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.dungeon.op.native-0182",
+      "kind": "operation",
+      "name": "native random-seed reader",
+      "subsystem": "tod.dungeon-generation",
+      "order": 40,
+      "address": ">0182",
+      "space": "console-rom"
+    },
+    {
+      "id": "tod.dungeon.op.native-018A",
+      "kind": "operation",
+      "name": "native random-seed writer",
+      "subsystem": "tod.dungeon-generation",
+      "order": 41,
+      "address": ">018A",
+      "space": "console-rom"
+    },
+    {
+      "id": "tod.dungeon.op.native-019C",
+      "kind": "operation",
+      "name": "native random-result writer",
+      "subsystem": "tod.dungeon-generation",
+      "order": 42,
+      "address": ">019C",
+      "space": "console-rom"
+    },
+    {
+      "id": "tod.dungeon.op.native-08CE",
+      "kind": "operation",
+      "name": "native GPL VDP data-port reader",
+      "subsystem": "tod.dungeon-generation",
+      "order": 43,
+      "address": ">08CE",
+      "space": "console-rom"
+    },
+    {
+      "id": "tod.dungeon.op.native-1D2A",
+      "kind": "operation",
+      "name": "native GPL VDP data-port writer",
+      "subsystem": "tod.dungeon-generation",
+      "order": 44,
+      "address": ">1D2A",
+      "space": "console-rom"
+    },
+    {
+      "id": "tod.dungeon.state.seed-83C0",
+      "kind": "state-cell",
+      "name": "GPL random-seed word",
+      "subsystem": "tod.dungeon-generation",
+      "order": 50,
+      "address": ">83C0",
+      "space": "scratchpad"
+    },
+    {
+      "id": "tod.dungeon.state.rand-8378",
+      "kind": "state-cell",
+      "name": "GPL random-result byte",
+      "subsystem": "tod.dungeon-generation",
+      "order": 51,
+      "address": ">8378",
+      "space": "scratchpad"
+    },
+    {
+      "id": "tod.dungeon.state.payload-34B8",
+      "kind": "state-cell",
+      "name": "neutral per-floor candidate payload",
+      "subsystem": "tod.dungeon-generation",
+      "order": 52,
+      "address": ">34B8..>36D1",
+      "space": "vram",
+      "detail": "538-byte payload; decoded loops use 17 by 26 active coordinates within a 32-byte stride plus padding/border cells"
+    },
+    {
+      "id": "tod.dungeon.effect.general-store",
+      "kind": "effect",
+      "name": "post-generation GENERAL STORE screen",
+      "subsystem": "tod.dungeon-generation",
+      "order": 60,
+      "space": "vram-name-table"
+    }
+  ],
+  "facts": [
+    {
+      "id": "fact.dungeon.protocol.seed-0000",
+      "subject": "tod.dungeon.experiment.seed-0000",
+      "predicate": "protocol",
+      "value": "same POINT OF NO RETURN checkpoint; seed 0000; PROC'D; fixed 12000-frame capture; two fresh processes",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-dungeon-recon"]
+    },
+    {
+      "id": "fact.dungeon.protocol.seed-1234",
+      "subject": "tod.dungeon.experiment.seed-1234",
+      "predicate": "protocol",
+      "value": "same checkpoint and window; only seed word changed to 1234 before recording; two fresh processes",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-dungeon-recon"]
+    },
+    {
+      "id": "fact.dungeon.determinism.seed-0000",
+      "subject": "tod.dungeon.experiment.seed-0000",
+      "predicate": "determinism",
+      "value": "A1 and A2 have byte-identical mtrace, vtrace, coverage, and save state; save-state SHA-256 cd2f72913d3b540c1776d99988c6c39815f32c3c5e5ceda6ec4806d3ff908040",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-0000"]
+    },
+    {
+      "id": "fact.dungeon.determinism.seed-1234",
+      "subject": "tod.dungeon.experiment.seed-1234",
+      "predicate": "determinism",
+      "value": "B1 and B2 have byte-identical mtrace, vtrace, coverage, and save state; save-state SHA-256 eaba49cf57724dc8a1889401fddeff6c2aa1cc3565a74f35e5ebeac2104fe0d1",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-1234"]
+    },
+    {
+      "id": "fact.dungeon.seed-controlled-difference",
+      "subject": "tod.dungeon.input.seed-variation",
+      "predicate": "controlled-effect",
+      "value": "changing only 83C0 from 0000 to 1234 changes 220 of 538 final candidate bytes while each result repeats exactly",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-0000", "ev.exp.dungeon-seed-1234"]
+    },
+    {
+      "id": "fact.dungeon.outer-boundary",
+      "subject": "tod.dungeon.routine.outer-62F4",
+      "predicate": "boundary",
+      "value": "entry 62F4; per-floor CALL at 63E3 through 8002 to 8246; floor counter INC at 63F2, comparison at 63F6, completed-loop fall-through at 63FF",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-entry-breadcrumb", "ev.static.gsl-dungeon-recon"]
+    },
+    {
+      "id": "fact.dungeon.floor-boundary",
+      "subject": "tod.dungeon.routine.floor-8246",
+      "predicate": "boundary",
+      "value": "per-floor routine begins at 8246 and returns at 84F1",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.gsl-dungeon-recon"]
+    },
+    {
+      "id": "fact.dungeon.payload-layout",
+      "subject": "tod.dungeon.state.payload-34B8",
+      "predicate": "layout",
+      "value": "538-byte VRAM payload 34B8..36D1; loop coordinates 02..12 by 03..1C, row stride 0020, base adjustment 0043",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.gsl-dungeon-recon", "ev.doc.tod-dungeon-recon"]
+    },
+    {
+      "id": "fact.dungeon.payload-final.seed-0000",
+      "subject": "tod.dungeon.state.payload-34B8",
+      "predicate": "final-byte-population",
+      "context": "tod.dungeon.experiment.seed-0000",
+      "value": "20:64 60:113 61:19 62:2 64:2 65:6 66:9 67:20 68:1 6A:2 6B:300",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-0000"]
+    },
+    {
+      "id": "fact.dungeon.payload-final.seed-1234",
+      "subject": "tod.dungeon.state.payload-34B8",
+      "predicate": "final-byte-population",
+      "context": "tod.dungeon.experiment.seed-1234",
+      "value": "20:64 60:64 61:28 63:1 64:4 65:3 66:6 67:20 68:1 6A:2 6B:345",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-1234"]
+    },
+    {
+      "id": "fact.dungeon.reset-invariant",
+      "subject": "tod.dungeon.routine.reset-8605",
+      "predicate": "write-count",
+      "value": "both seed groups perform 474 writes attributed after AND 8611 and 474 stores at 863D",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-0000", "ev.exp.dungeon-seed-1234"]
+    },
+    {
+      "id": "fact.dungeon.placement-count",
+      "subject": "tod.dungeon.routine.placement-852F",
+      "predicate": "write-count",
+      "value": "both seed groups perform 23 value writes at GPL 8553, to seed-dependent addresses",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-0000", "ev.exp.dungeon-seed-1234"]
+    },
+    {
+      "id": "fact.dungeon.stride32.seed-0000",
+      "subject": "tod.dungeon.op.gpl-8339",
+      "predicate": "write-count",
+      "context": "tod.dungeon.experiment.seed-0000",
+      "value": "53 writes to 51 candidate addresses",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-0000"]
+    },
+    {
+      "id": "fact.dungeon.stride32.seed-1234",
+      "subject": "tod.dungeon.op.gpl-8339",
+      "predicate": "write-count",
+      "context": "tod.dungeon.experiment.seed-1234",
+      "value": "65 writes to 58 candidate addresses",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-1234"]
+    },
+    {
+      "id": "fact.dungeon.stride1.seed-0000",
+      "subject": "tod.dungeon.op.gpl-83D8",
+      "predicate": "write-count",
+      "context": "tod.dungeon.experiment.seed-0000",
+      "value": "160 writes to 151 candidate addresses",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-0000"]
+    },
+    {
+      "id": "fact.dungeon.stride1.seed-1234",
+      "subject": "tod.dungeon.op.gpl-83D8",
+      "predicate": "write-count",
+      "context": "tod.dungeon.experiment.seed-1234",
+      "value": "104 writes to 98 candidate addresses",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-1234"]
+    },
+    {
+      "id": "fact.dungeon.native-writer",
+      "subject": "tod.dungeon.op.native-1D2A",
+      "predicate": "opcode-and-role",
+      "value": "opcode D802 performs every filtered candidate VDP write on behalf of the attributed GPL operation",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-0000", "ev.exp.dungeon-seed-1234"]
+    },
+    {
+      "id": "fact.dungeon.random-native-boundary",
+      "subject": "tod.dungeon.state.seed-83C0",
+      "predicate": "native-boundary",
+      "value": "PC 0182 opcode 3860 reads the seed, PC 018A opcode C802 writes the next seed, and PC 019C opcode D802 writes the result byte at 8378",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-0000", "ev.exp.dungeon-seed-1234"]
+    },
+    {
+      "id": "fact.dungeon.phase-order",
+      "subject": "tod.dungeon.state.payload-34B8",
+      "predicate": "phase-order",
+      "value": "invariant reset at 8611/863D precedes 23 seed-dependent value stores at 8553, which precede seed-dependent stride-32 and stride-1 stores; later operation A3B5 reads after candidate mutation stops",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-0000", "ev.exp.dungeon-seed-1234", "ev.static.gsl-dungeon-recon"]
+    },
+    {
+      "id": "fact.dungeon.visible-completion",
+      "subject": "tod.dungeon.effect.general-store",
+      "predicate": "completion",
+      "value": "both controlled generations leave the construction screen and complete the GENERAL STORE name table; final non-cursor change at modeled frame 4274+39849 for seed 0000 and 4281+41103 for seed 1234",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-0000", "ev.exp.dungeon-seed-1234"]
+    },
+    {
+      "id": "fact.dungeon.gsl-roundtrip",
+      "subject": "tod.dungeon.routine.outer-62F4",
+      "predicate": "byte-roundtrip",
+      "value": "trace entries 62F4 and 852F recover executed code while all five GROM pages reproduce byte-identically; 263 functions, 5185 statements, 19 raw-byte instructions, zero demotions",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.gsl-dungeon-recon"]
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "hyp.dungeon.grid-purpose",
+      "subject": "tod.dungeon.state.payload-34B8",
+      "statement": "the payload is a per-floor dungeon-topology grid and the stride passes carve or connect its traversable cells",
+      "classification": "inferred",
+      "alternatives": ["a more general room/corridor work grid", "an intermediate encoding later transformed into the persistent floor map"],
+      "evidence": ["ev.exp.dungeon-seed-0000", "ev.exp.dungeon-seed-1234", "ev.static.gsl-dungeon-recon"]
+    },
+    {
+      "id": "hyp.dungeon.tile-semantics",
+      "subject": "tod.dungeon.state.payload-34B8",
+      "statement": "the exact graphical or gameplay meanings of bytes 60 through 6B are not recovered",
+      "classification": "unresolved",
+      "resolves_when": "a later held-out execution connects individual values to rendered walls/openings or movement collision without relying on names",
+      "evidence": ["ev.doc.tod-dungeon-recon"]
+    },
+    {
+      "id": "hyp.dungeon.placement-purpose",
+      "subject": "tod.dungeon.routine.placement-852F",
+      "statement": "the 23 random-marker writes seed special rooms, endpoints, stairs, or corridor anchors before topology propagation",
+      "classification": "inferred",
+      "alternatives": ["only topology endpoints", "a mixture of endpoints and special room markers"],
+      "evidence": ["ev.exp.dungeon-seed-0000", "ev.exp.dungeon-seed-1234", "ev.static.gsl-dungeon-recon"]
+    },
+    {
+      "id": "hyp.dungeon-lookahead-36D2",
+      "subject": "tod.dungeon.routine.reset-8605",
+      "statement": "the reset loop tests offset 021A inclusively while the payload copy count is 021A bytes; whether the extra byte at 36D2 is a sentinel or an off-by-one compatibility behavior is unresolved",
+      "classification": "unresolved",
+      "resolves_when": "a focused boundary capture observes 36D2 under a state where it is at least 60",
+      "evidence": ["ev.static.gsl-dungeon-recon", "ev.doc.tod-dungeon-recon"]
+    },
+    {
+      "id": "hyp.dungeon.full-generator-economics",
+      "subject": "tod.dungeon-generation",
+      "statement": "full generator reconstruction is not economical as one immediate package; a later per-floor candidate-buffer model is plausible, but stocking, content, inter-floor state, and tile semantics remain unbounded",
+      "classification": "unresolved",
+      "resolves_when": "the owner chooses a bounded candidate-buffer model or authorizes separate later-content reconnaissance",
+      "evidence": ["ev.doc.tod-dungeon-recon"]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel.dungeon.seed-input.writes-seed",
+      "order": 1,
+      "from": "tod.dungeon.input.seed-variation",
+      "kind": "writes",
+      "to": "tod.dungeon.state.seed-83C0",
+      "classification": "observed",
+      "detail": "controlled diagnostic setup before recording",
+      "evidence": ["ev.doc.tod-dungeon-recon"]
+    },
+    {
+      "id": "rel.dungeon.native-0182.reads-seed",
+      "order": 2,
+      "from": "tod.dungeon.op.native-0182",
+      "kind": "reads",
+      "to": "tod.dungeon.state.seed-83C0",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-0000", "ev.exp.dungeon-seed-1234"]
+    },
+    {
+      "id": "rel.dungeon.native-018A.writes-seed",
+      "order": 3,
+      "from": "tod.dungeon.op.native-018A",
+      "kind": "writes",
+      "to": "tod.dungeon.state.seed-83C0",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-0000", "ev.exp.dungeon-seed-1234"]
+    },
+    {
+      "id": "rel.dungeon.native-019C.writes-rand",
+      "order": 4,
+      "from": "tod.dungeon.op.native-019C",
+      "kind": "writes",
+      "to": "tod.dungeon.state.rand-8378",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-0000", "ev.exp.dungeon-seed-1234"]
+    },
+    {
+      "id": "rel.dungeon.outer.calls-floor",
+      "order": 10,
+      "from": "tod.dungeon.routine.outer-62F4",
+      "kind": "continues-to",
+      "to": "tod.dungeon.op.gpl-63E3",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-entry-breadcrumb", "ev.static.gsl-dungeon-recon"]
+    },
+    {
+      "id": "rel.dungeon.call.enters-floor",
+      "order": 11,
+      "from": "tod.dungeon.op.gpl-63E3",
+      "kind": "continues-to",
+      "to": "tod.dungeon.routine.floor-8246",
+      "classification": "observed",
+      "detail": "CALL >8002; the stub branches to >8246",
+      "evidence": ["ev.exp.dungeon-entry-breadcrumb", "ev.static.gsl-dungeon-recon"]
+    },
+    {
+      "id": "rel.dungeon.floor.calls-reset",
+      "order": 20,
+      "from": "tod.dungeon.routine.floor-8246",
+      "kind": "continues-to",
+      "to": "tod.dungeon.routine.reset-8605",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.gsl-dungeon-recon"]
+    },
+    {
+      "id": "rel.dungeon.reset-and.writes-payload",
+      "order": 21,
+      "from": "tod.dungeon.op.gpl-8611",
+      "kind": "writes",
+      "to": "tod.dungeon.state.payload-34B8",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-0000", "ev.exp.dungeon-seed-1234"]
+    },
+    {
+      "id": "rel.dungeon.reset-store.writes-payload",
+      "order": 22,
+      "from": "tod.dungeon.op.gpl-863D",
+      "kind": "writes",
+      "to": "tod.dungeon.state.payload-34B8",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-0000", "ev.exp.dungeon-seed-1234"]
+    },
+    {
+      "id": "rel.dungeon.placement.reads-rand",
+      "order": 30,
+      "from": "tod.dungeon.routine.placement-852F",
+      "kind": "reads",
+      "to": "tod.dungeon.state.rand-8378",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.gsl-dungeon-recon"]
+    },
+    {
+      "id": "rel.dungeon.placement-store.writes-payload",
+      "order": 31,
+      "from": "tod.dungeon.op.gpl-8553",
+      "kind": "writes",
+      "to": "tod.dungeon.state.payload-34B8",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-0000", "ev.exp.dungeon-seed-1234"]
+    },
+    {
+      "id": "rel.dungeon.stride32.writes-payload",
+      "order": 40,
+      "from": "tod.dungeon.op.gpl-8339",
+      "kind": "writes",
+      "to": "tod.dungeon.state.payload-34B8",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-0000", "ev.exp.dungeon-seed-1234"]
+    },
+    {
+      "id": "rel.dungeon.stride1.writes-payload",
+      "order": 41,
+      "from": "tod.dungeon.op.gpl-83D8",
+      "kind": "writes",
+      "to": "tod.dungeon.state.payload-34B8",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-0000", "ev.exp.dungeon-seed-1234"]
+    },
+    {
+      "id": "rel.dungeon.additional-a.writes-payload",
+      "order": 42,
+      "from": "tod.dungeon.op.gpl-845F",
+      "kind": "writes",
+      "to": "tod.dungeon.state.payload-34B8",
+      "classification": "observed",
+      "context": "tod.dungeon.experiment.seed-1234",
+      "evidence": ["ev.exp.dungeon-seed-1234"]
+    },
+    {
+      "id": "rel.dungeon.additional-b.writes-payload",
+      "order": 43,
+      "from": "tod.dungeon.op.gpl-847E",
+      "kind": "writes",
+      "to": "tod.dungeon.state.payload-34B8",
+      "classification": "observed",
+      "context": "tod.dungeon.experiment.seed-1234",
+      "evidence": ["ev.exp.dungeon-seed-1234"]
+    },
+    {
+      "id": "rel.dungeon.gpl-writes.executed-by-native",
+      "order": 50,
+      "from": "tod.dungeon.op.gpl-83D8",
+      "kind": "executed-by",
+      "to": "tod.dungeon.op.native-1D2A",
+      "classification": "observed",
+      "detail": "representative of every filtered candidate store; all share PC 1D2A opcode D802",
+      "evidence": ["ev.exp.dungeon-seed-0000", "ev.exp.dungeon-seed-1234"]
+    },
+    {
+      "id": "rel.dungeon.reader.reads-payload",
+      "order": 60,
+      "from": "tod.dungeon.routine.reader-A3B5",
+      "kind": "reads",
+      "to": "tod.dungeon.state.payload-34B8",
+      "classification": "observed",
+      "detail": "later reads occur after candidate mutation has stopped",
+      "evidence": ["ev.exp.dungeon-seed-0000", "ev.exp.dungeon-seed-1234", "ev.static.gsl-dungeon-recon"]
+    },
+    {
+      "id": "rel.dungeon.payload.precedes-store",
+      "order": 70,
+      "from": "tod.dungeon.state.payload-34B8",
+      "kind": "precedes",
+      "to": "tod.dungeon.effect.general-store",
+      "classification": "observed",
+      "evidence": ["ev.exp.dungeon-seed-0000", "ev.exp.dungeon-seed-1234"]
+    }
+  ],
+  "queries": [
+    {
+      "id": "q.tod.dungeon-generation",
+      "subsystem": "tod.dungeon-generation",
+      "question": "What boundary, mutable representation, random source, and executing operations define the observed Tunnels of Doom dungeon-generation phase?",
+      "answer": "The trace-discovered outer routine at >62F4 calls >8002 at >63E3, which enters the per-floor routine at >8246. A 538-byte VRAM candidate payload at >34B8..>36D1 is reset by >8611/>863D, receives 23 seed-dependent value stores at >8553, and is then written by operations whose index advances by >0020 at >8339 and >0001 at >83D8; native >1D2A/>D802 performs every filtered VDP write. Changing only scratchpad seed >83C0 from >0000 to >1234 yields deterministic repeats but changes 220 payload bytes. Exact tile meanings and the later full stocking/content generator remain unresolved, so full generator reconstruction is not yet economical as one package."
+    }
+  ]
+}

@@ -113,6 +113,129 @@ const SAVE_VERSION: u32 = 3;
 /// loads as `None` (the frontend may adopt one it recorded separately).
 const MIN_SAVE_VERSION: u32 = 1;
 
+/// The VDP port operation represented by [`VdpWriteProvenance`]. Kept
+/// explicit even though the first observatory slice records only data-port
+/// writes, so a saved text trace states the operation rather than implying it.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum VdpPortOperation {
+    WriteData,
+}
+
+/// One causally attributed byte accepted by the VDP data port. This is
+/// diagnostic evidence, not machine state, and is never serialized.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct VdpWriteProvenance {
+    /// CPU cycle count at the start of the causing instruction.
+    pub cycle: u64,
+    /// Address of the causing TMS9900 instruction before its opcode fetch.
+    pub pc: u16,
+    /// Opcode word fetched for that instruction.
+    pub opcode: u16,
+    /// R11 at instruction start: the TMS9900 link/return breadcrumb used to
+    /// distinguish direct callers without recording a general CPU trace.
+    pub r11: u16,
+    /// Workspace R9 at instruction start. On the GPL interpreter workspace
+    /// (`>83E0`) this is the current GPL opcode (high byte).
+    pub r9: u16,
+    /// Prefetch-corrected GROM address of the next data byte at instruction
+    /// start — the GPL stream position, without a full CPU or GROM trace.
+    pub grom: u16,
+    /// GROM prefetch buffer at instruction start (next GPL byte).
+    pub grom_byte: u8,
+    /// VDP port operation performed by the instruction.
+    pub operation: VdpPortOperation,
+    /// Console address used for the port write (normally `>8C00`).
+    pub port: u16,
+    /// Actual destination from the VDP's 14-bit address latch.
+    pub address: u16,
+    /// VRAM byte before the write; useful for accounting for visible changes.
+    pub old_value: u8,
+    /// Byte accepted by the VDP.
+    pub value: u8,
+}
+
+/// Address space selected by the optional mutable-state provenance recorder.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum StateSpace {
+    /// Writable CPU-addressed RAM, including scratchpad and expansion RAM.
+    Cpu,
+    /// The VDP's 14-bit VRAM address space, observed at the data port.
+    Vram,
+    /// Prefetch-corrected GROM data bytes observed at the data port.
+    Grom,
+}
+
+/// Access direction selected by a [`StateFilter`].
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum StateAccessFilter {
+    Read,
+    Write,
+    ReadWrite,
+}
+
+/// One explicit inclusive filter for mutable-state provenance.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct StateFilter {
+    pub space: StateSpace,
+    pub access: StateAccessFilter,
+    pub start: u16,
+    pub end: u16,
+}
+
+/// Direction of one recorded state access.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum StateAccess {
+    Read,
+    Write,
+}
+
+/// One filtered state access attributed to its causing native instruction and
+/// the current GPL stream breadcrumb. Diagnostic evidence is never serialized.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct StateAccessProvenance {
+    pub cycle: u64,
+    pub pc: u16,
+    pub opcode: u16,
+    pub r11: u16,
+    pub r9: u16,
+    pub grom: u16,
+    pub grom_byte: u8,
+    pub space: StateSpace,
+    pub access: StateAccess,
+    /// CPU, VRAM, or prefetch-corrected GROM address, according to `space`.
+    pub address: u16,
+    /// Console device port for VRAM/GROM accesses; absent for direct CPU RAM.
+    pub port: Option<u16>,
+    /// Value returned by a read or accepted by a write.
+    pub value: u8,
+    /// Value before a write; absent for reads.
+    pub old_value: Option<u8>,
+}
+
+#[derive(Clone, Copy)]
+struct InstructionProvenance {
+    cycle: u64,
+    pc: u16,
+    opcode: u16,
+    r11: u16,
+    r9: u16,
+    grom: u16,
+    grom_byte: u8,
+}
+
+struct VdpWriteRecorder {
+    start: u16,
+    end: u16,
+    instruction: Option<InstructionProvenance>,
+    log: Vec<VdpWriteProvenance>,
+}
+
+struct StateRecorder {
+    filters: Vec<StateFilter>,
+    instruction: Option<InstructionProvenance>,
+    log: Vec<StateAccessProvenance>,
+}
+
 /// The console memory map and CRU routing — the [`Bus`] the CPU talks to.
 pub struct Tms9900Bus {
     /// Console system ROM at `>0000–1FFF` (read-only, fast 16-bit bus).
@@ -149,6 +272,12 @@ pub struct Tms9900Bus {
     pub disk: Disk,
     /// The SN76489 sound chip (write-only port at `>8400`).
     pub psg: Psg,
+    /// Optional address-filtered VDP data-port provenance. `None` is the normal
+    /// execution path: no allocation, no retained instruction context.
+    vdp_write_recorder: Option<VdpWriteRecorder>,
+    /// Optional explicitly filtered CPU RAM, VRAM, and GROM data provenance.
+    /// Kept separate from execution state and from the older VDP-write POC.
+    state_recorder: Option<StateRecorder>,
 }
 
 impl Tms9900Bus {
@@ -176,6 +305,8 @@ impl Tms9900Bus {
             tms9901: Tms9901::new(),
             disk: Disk::new(),
             psg: Psg::default(),
+            vdp_write_recorder: None,
+            state_recorder: None,
         }
     }
 
@@ -197,17 +328,81 @@ impl Tms9900Bus {
         }
     }
 
+    fn record_state_access(
+        &mut self,
+        space: StateSpace,
+        access: StateAccess,
+        address: u16,
+        port: Option<u16>,
+        old_value: Option<u8>,
+        value: u8,
+    ) {
+        let Some(recorder) = self.state_recorder.as_mut() else {
+            return;
+        };
+        let matches = recorder.filters.iter().any(|filter| {
+            filter.space == space
+                && (filter.start..=filter.end).contains(&address)
+                && matches!(
+                    (filter.access, access),
+                    (StateAccessFilter::ReadWrite, _)
+                        | (StateAccessFilter::Read, StateAccess::Read)
+                        | (StateAccessFilter::Write, StateAccess::Write)
+                )
+        });
+        let Some(instruction) = recorder.instruction.filter(|_| matches) else {
+            return;
+        };
+        recorder.log.push(StateAccessProvenance {
+            cycle: instruction.cycle,
+            pc: instruction.pc,
+            opcode: instruction.opcode,
+            r11: instruction.r11,
+            r9: instruction.r9,
+            grom: instruction.grom,
+            grom_byte: instruction.grom_byte,
+            space,
+            access,
+            address,
+            port,
+            value,
+            old_value,
+        });
+    }
+
     /// Decode and read one byte from the console address space. This is the bus
     /// primitive; word reads are two of these.
     fn read_byte_decode(&mut self, addr: u16) -> u8 {
         match addr {
             0x0000..=0x1FFF => self.rom[addr as usize],
-            0x2000..=0x3FFF => self.low_ram[(addr - 0x2000) as usize],
+            0x2000..=0x3FFF => {
+                let value = self.low_ram[(addr - 0x2000) as usize];
+                self.record_state_access(
+                    StateSpace::Cpu,
+                    StateAccess::Read,
+                    addr,
+                    None,
+                    None,
+                    value,
+                );
+                value
+            }
             // DSR ROM window + FD1771 registers (the disk card, gated by CRU
             // >1100 bit 0). Reads as open bus until a controller is installed.
             0x4000..=0x5FFF => self.disk.read_byte(addr),
             0x6000..=0x7FFF => self.read_cartridge(addr),
-            0x8000..=0x83FF => self.scratchpad[(addr & 0xFF) as usize],
+            0x8000..=0x83FF => {
+                let value = self.scratchpad[(addr & 0xFF) as usize];
+                self.record_state_access(
+                    StateSpace::Cpu,
+                    StateAccess::Read,
+                    addr,
+                    None,
+                    None,
+                    value,
+                );
+                value
+            }
             // Sound chip is write-only; reads return open bus.
             0x8400..=0x87FF => 0xFF,
             // VDP read ports: bit 1 selects data (>8800) vs. status (>8802). As
@@ -219,7 +414,16 @@ impl Tms9900Bus {
                 if addr & 1 != 0 {
                     0xFF
                 } else if addr & 2 == 0 {
-                    self.vdp.read_data()
+                    let (address, value) = self.vdp.read_data_with_address();
+                    self.record_state_access(
+                        StateSpace::Vram,
+                        StateAccess::Read,
+                        address,
+                        Some(addr),
+                        None,
+                        value,
+                    );
+                    value
                 } else {
                     self.vdp.read_status()
                 }
@@ -238,14 +442,35 @@ impl Tms9900Bus {
                 if addr & 1 != 0 {
                     0xFF
                 } else if addr & 2 == 0 {
-                    self.grom.read_data()
+                    let address = self.grom.next_data_address();
+                    let value = self.grom.read_data();
+                    self.record_state_access(
+                        StateSpace::Grom,
+                        StateAccess::Read,
+                        address,
+                        Some(addr),
+                        None,
+                        value,
+                    );
+                    value
                 } else {
                     self.grom.read_address()
                 }
             }
             // GROM write ports — reads are open bus.
             0x9C00..=0x9FFF => 0xFF,
-            0xA000..=0xFFFF => self.high_ram[(addr - 0xA000) as usize],
+            0xA000..=0xFFFF => {
+                let value = self.high_ram[(addr - 0xA000) as usize];
+                self.record_state_access(
+                    StateSpace::Cpu,
+                    StateAccess::Read,
+                    addr,
+                    None,
+                    None,
+                    value,
+                );
+                value
+            }
         }
     }
 
@@ -254,10 +479,32 @@ impl Tms9900Bus {
         match addr {
             // Console ROM is read-only.
             0x0000..=0x1FFF => {}
-            0x2000..=0x3FFF => self.low_ram[(addr - 0x2000) as usize] = value,
+            0x2000..=0x3FFF => {
+                let old_value = self.low_ram[(addr - 0x2000) as usize];
+                self.low_ram[(addr - 0x2000) as usize] = value;
+                self.record_state_access(
+                    StateSpace::Cpu,
+                    StateAccess::Write,
+                    addr,
+                    None,
+                    Some(old_value),
+                    value,
+                );
+            }
             0x4000..=0x5FFF => self.disk.write_byte(addr, value),
             0x6000..=0x7FFF => self.write_cartridge(addr, value),
-            0x8000..=0x83FF => self.scratchpad[(addr & 0xFF) as usize] = value,
+            0x8000..=0x83FF => {
+                let old_value = self.scratchpad[(addr & 0xFF) as usize];
+                self.scratchpad[(addr & 0xFF) as usize] = value;
+                self.record_state_access(
+                    StateSpace::Cpu,
+                    StateAccess::Write,
+                    addr,
+                    None,
+                    Some(old_value),
+                    value,
+                );
+            }
             // SN76489 sound chip (write-only). Like the VDP/GROM it hangs off the
             // high byte of the multiplexed bus and latches only at the even
             // address; the odd half of a *word* write is ignored, so a word write
@@ -282,7 +529,35 @@ impl Tms9900Bus {
                 if addr & 1 != 0 {
                     // odd byte of a word access — no second VDP latch
                 } else if addr & 2 == 0 {
-                    self.vdp.write_data(value);
+                    let (address, old_value) = self.vdp.write_data(value);
+                    self.record_state_access(
+                        StateSpace::Vram,
+                        StateAccess::Write,
+                        address,
+                        Some(addr),
+                        Some(old_value),
+                        value,
+                    );
+                    if let Some(recorder) = self.vdp_write_recorder.as_mut() {
+                        if (recorder.start..=recorder.end).contains(&address) {
+                            if let Some(instruction) = recorder.instruction {
+                                recorder.log.push(VdpWriteProvenance {
+                                    cycle: instruction.cycle,
+                                    pc: instruction.pc,
+                                    opcode: instruction.opcode,
+                                    r11: instruction.r11,
+                                    r9: instruction.r9,
+                                    grom: instruction.grom,
+                                    grom_byte: instruction.grom_byte,
+                                    operation: VdpPortOperation::WriteData,
+                                    port: addr,
+                                    address,
+                                    old_value,
+                                    value,
+                                });
+                            }
+                        }
+                    }
                 } else {
                     self.vdp.write_control(value);
                 }
@@ -304,7 +579,18 @@ impl Tms9900Bus {
                     self.grom.write_address(value);
                 }
             }
-            0xA000..=0xFFFF => self.high_ram[(addr - 0xA000) as usize] = value,
+            0xA000..=0xFFFF => {
+                let old_value = self.high_ram[(addr - 0xA000) as usize];
+                self.high_ram[(addr - 0xA000) as usize] = value;
+                self.record_state_access(
+                    StateSpace::Cpu,
+                    StateAccess::Write,
+                    addr,
+                    None,
+                    Some(old_value),
+                    value,
+                );
+            }
         }
     }
 
@@ -457,7 +743,34 @@ impl Machine {
             None
         };
         self.cpu.set_interrupt_request(int);
-        self.cpu.step(&mut self.bus)
+        if (self.bus.vdp_write_recorder.is_some() || self.bus.state_recorder.is_some())
+            && self.cpu.instruction_will_execute()
+        {
+            let pc = self.cpu.pc();
+            let instruction = InstructionProvenance {
+                cycle: self.cpu.cycles(),
+                pc,
+                opcode: self.bus.peek_instruction_word(pc),
+                r11: self.reg(11),
+                r9: self.reg(9),
+                grom: self.bus.grom.next_data_address(),
+                grom_byte: self.bus.grom.next_data_byte(),
+            };
+            if let Some(recorder) = self.bus.vdp_write_recorder.as_mut() {
+                recorder.instruction = Some(instruction);
+            }
+            if let Some(recorder) = self.bus.state_recorder.as_mut() {
+                recorder.instruction = Some(instruction);
+            }
+        }
+        let cycles = self.cpu.step(&mut self.bus);
+        if let Some(recorder) = self.bus.vdp_write_recorder.as_mut() {
+            recorder.instruction = None;
+        }
+        if let Some(recorder) = self.bus.state_recorder.as_mut() {
+            recorder.instruction = None;
+        }
+        cycles
     }
 
     /// Advance the machine by one video frame, walking the beam the way the
@@ -711,6 +1024,95 @@ impl Machine {
 }
 
 impl Tms9900Bus {
+    /// Read an instruction byte without side effects, including the currently
+    /// selected cartridge ROM bank. This is deliberately separate from
+    /// [`peek`](Self::peek), whose user-facing contract returns zero for the
+    /// paged cartridge window.
+    fn peek_instruction_byte(&self, addr: u16) -> u8 {
+        match addr {
+            0x0000..=0x1FFF => self.rom[addr as usize],
+            0x2000..=0x3FFF => self.low_ram[(addr - 0x2000) as usize],
+            0x6000..=0x7FFF => self.read_cartridge(addr),
+            0x8000..=0x83FF => self.scratchpad[(addr & 0xFF) as usize],
+            0xA000..=0xFFFF => self.high_ram[(addr - 0xA000) as usize],
+            _ => 0,
+        }
+    }
+
+    fn peek_instruction_word(&self, addr: u16) -> u16 {
+        let addr = addr & 0xFFFE;
+        ((self.peek_instruction_byte(addr) as u16) << 8)
+            | self.peek_instruction_byte(addr | 1) as u16
+    }
+
+    /// Start a fresh address-filtered VDP data-port provenance log. The range
+    /// is inclusive and must already be a valid, non-wrapping 14-bit range.
+    pub fn record_vdp_writes(&mut self, start: u16, end: u16) {
+        debug_assert!(start <= end && end <= 0x3FFF);
+        self.vdp_write_recorder = Some(VdpWriteRecorder {
+            start,
+            end,
+            instruction: None,
+            log: Vec::new(),
+        });
+    }
+
+    /// Disable VDP write provenance and drop its log allocation.
+    pub fn stop_recording_vdp_writes(&mut self) {
+        self.vdp_write_recorder = None;
+    }
+
+    /// Clear retained provenance without changing the active address filter.
+    pub fn clear_vdp_write_log(&mut self) {
+        if let Some(recorder) = self.vdp_write_recorder.as_mut() {
+            recorder.log.clear();
+        }
+    }
+
+    /// Active inclusive VRAM filter, or `None` while provenance is disabled.
+    pub fn vdp_write_filter(&self) -> Option<(u16, u16)> {
+        self.vdp_write_recorder.as_ref().map(|r| (r.start, r.end))
+    }
+
+    /// Causally attributed VDP writes retained by the active recorder.
+    pub fn vdp_write_log(&self) -> &[VdpWriteProvenance] {
+        self.vdp_write_recorder.as_ref().map_or(&[], |r| r.log.as_slice())
+    }
+
+    /// Start a fresh explicitly filtered mutable-state provenance window.
+    /// Filters are inclusive; callers validate that CPU filters name writable
+    /// RAM, VRAM filters fit 14 bits, and GROM filters request reads only.
+    pub fn record_state_accesses(&mut self, filters: Vec<StateFilter>) {
+        debug_assert!(!filters.is_empty());
+        self.state_recorder = Some(StateRecorder {
+            filters,
+            instruction: None,
+            log: Vec::new(),
+        });
+    }
+
+    /// Disable mutable-state provenance and drop its filters and retained log.
+    pub fn stop_recording_state_accesses(&mut self) {
+        self.state_recorder = None;
+    }
+
+    /// Clear retained state provenance without ending the capture window.
+    pub fn clear_state_access_log(&mut self) {
+        if let Some(recorder) = self.state_recorder.as_mut() {
+            recorder.log.clear();
+        }
+    }
+
+    /// Active state filters, or `None` when the recorder is disabled.
+    pub fn state_access_filters(&self) -> Option<&[StateFilter]> {
+        self.state_recorder.as_ref().map(|r| r.filters.as_slice())
+    }
+
+    /// Causally attributed state accesses retained by the active recorder.
+    pub fn state_access_log(&self) -> &[StateAccessProvenance] {
+        self.state_recorder.as_ref().map_or(&[], |r| r.log.as_slice())
+    }
+
     /// Peek a RAM/ROM byte without side effects (diagnostics; device ports read
     /// as 0 here so this never perturbs them).
     pub fn peek(&self, addr: u16) -> u8 {

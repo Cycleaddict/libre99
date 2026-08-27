@@ -216,19 +216,33 @@ impl Vdp {
     /// Read a VRAM data byte (`>8800`): return the read-ahead buffer, then refill
     /// it from the (auto-incrementing) address counter.
     pub fn read_data(&mut self) -> u8 {
+        self.read_data_with_address().1
+    }
+
+    /// Read a VRAM data byte and return its semantic source address. The source
+    /// is one byte behind the current counter because the VDP data port returns
+    /// its read-ahead buffer before refilling it.
+    pub fn read_data_with_address(&mut self) -> (u16, u8) {
+        let address = self.address.wrapping_sub(1) & 0x3FFF;
         let value = self.read_buffer;
         self.read_buffer = self.vram[self.address as usize];
         self.address = (self.address + 1) & 0x3FFF;
         self.expecting_second = false;
-        value
+        (address, value)
     }
 
-    /// Write a VRAM data byte (`>8C00`) and auto-increment.
-    pub fn write_data(&mut self, byte: u8) {
-        self.vram[self.address as usize] = byte;
+    /// Write a VRAM data byte (`>8C00`) and auto-increment. Returns the actual
+    /// 14-bit destination and its prior byte so the console's optional
+    /// observation layer can report the semantic write without reaching into
+    /// this chip's private address latch.
+    pub fn write_data(&mut self, byte: u8) -> (u16, u8) {
+        let address = self.address;
+        let old = self.vram[address as usize];
+        self.vram[address as usize] = byte;
         self.read_buffer = byte;
         self.address = (self.address + 1) & 0x3FFF;
         self.expecting_second = false;
+        (address, old)
     }
 
     /// Write the control port (`>8C02`): see the two-byte protocol above.

@@ -47,8 +47,8 @@
 //!
 //! ```text
 //!   libre99gsl compile   <in.gsl> -o <out>  [--format ctg|grom|grom24|rombin]
-//!   libre99gsl decompile <in> -o <out.gsl>  [--base 0xNNNN] [--rom]
-//!   libre99gsl roundtrip <in> [--keep <out.gsl>] [--base 0xNNNN] [--rom]
+//!   libre99gsl decompile <in> -o <out.gsl>  [--base 0xNNNN] [--rom] [--entries FILE] [--map FILE]
+//!   libre99gsl roundtrip <in> [--keep <out.gsl>] [--base 0xNNNN] [--rom] [--entries FILE] [--map FILE]
 //!   libre99gsl verify    <in.gsl> <against>  [--base 0xNNNN] [--rom]
 //! ```
 
@@ -77,8 +77,8 @@ fn main() -> ExitCode {
 
 const USAGE: &str = "usage:
   libre99gsl compile   <in.gsl> -o <out>  [--format ctg|grom|grom24|rombin]
-  libre99gsl decompile <in.ctg|in.bin> -o <out.gsl>  [--base 0xNNNN] [--rom]
-  libre99gsl roundtrip <in.ctg|in.bin> [--keep <out.gsl>] [--base 0xNNNN] [--rom]
+  libre99gsl decompile <in.ctg|in.bin> -o <out.gsl>  [--base 0xNNNN] [--rom] [--entries FILE] [--map FILE]
+  libre99gsl roundtrip <in.ctg|in.bin> [--keep <out.gsl>] [--base 0xNNNN] [--rom] [--entries FILE] [--map FILE]
   libre99gsl verify    <in.gsl> <against.ctg|.bin>  [--base 0xNNNN] [--rom]";
 
 struct Flags {
@@ -90,6 +90,8 @@ struct Flags {
     base: Option<u16>,
     rom: bool,
     keep: Option<String>,
+    entries: Option<String>,
+    map: Option<String>,
 }
 
 fn parse_flags(args: &[String]) -> Result<Flags, String> {
@@ -101,12 +103,16 @@ fn parse_flags(args: &[String]) -> Result<Flags, String> {
         base: None,
         rom: false,
         keep: None,
+        entries: None,
+        map: None,
     };
     let mut it = args.iter();
     while let Some(a) = it.next() {
         match a.as_str() {
             "-o" => f.output = Some(it.next().ok_or("-o needs a path")?.clone()),
             "--keep" => f.keep = Some(it.next().ok_or("--keep needs a path")?.clone()),
+            "--entries" => f.entries = Some(it.next().ok_or("--entries needs a path")?.clone()),
+            "--map" => f.map = Some(it.next().ok_or("--map needs a path")?.clone()),
             "--rom" => f.rom = true,
             "--base" => {
                 let v = it.next().ok_or("--base needs an address")?;
@@ -157,9 +163,47 @@ fn compile_gsl(path: &str) -> Result<libre99_gsl::Compiled, String> {
     })
 }
 
+fn parse_trace_entries(text: &str) -> Result<Vec<u16>, String> {
+    let mut entries = Vec::new();
+    for (line_no, raw) in text.lines().enumerate() {
+        let line = raw.split_once('#').map_or(raw, |(before, _)| before).trim();
+        if line.is_empty() {
+            continue;
+        }
+        if line.split_whitespace().count() != 1 {
+            return Err(format!(
+                "entries line {} must contain one hexadecimal GPL address",
+                line_no + 1
+            ));
+        }
+        let digits = line.trim_start_matches("0x").trim_start_matches('>');
+        let addr = u16::from_str_radix(digits, 16)
+            .map_err(|_| format!("bad GPL address '{line}' on entries line {}", line_no + 1))?;
+        entries.push(addr);
+    }
+    entries.sort_unstable();
+    entries.dedup();
+    Ok(entries)
+}
+
+fn read_trace_entries(path: Option<&str>) -> Result<Vec<u16>, String> {
+    let Some(path) = path else {
+        return Ok(Vec::new());
+    };
+    let text = std::fs::read_to_string(path)
+        .map_err(|e| format!("cannot read entries file {path}: {e}"))?;
+    parse_trace_entries(&text).map_err(|e| format!("{path}: {e}"))
+}
+
 fn cmd_compile(args: &[String]) -> Result<(), String> {
     let f = parse_flags(args)?;
     one_input(&f)?;
+    if f.entries.is_some() {
+        return Err("--entries applies only to decompile and roundtrip".into());
+    }
+    if f.map.is_some() {
+        return Err("--map applies only to decompile and roundtrip".into());
+    }
     let out_path = f.output.ok_or("compile needs -o <out>")?;
     let c = compile_gsl(&f.input)?;
     let format = f
@@ -192,13 +236,20 @@ fn cmd_decompile(args: &[String]) -> Result<(), String> {
     one_input(&f)?;
     let out_path = f.output.ok_or("decompile needs -o <out.gsl>")?;
     let bytes = std::fs::read(&f.input).map_err(|e| format!("cannot read {}: {e}", f.input))?;
+    let trace_entries = read_trace_entries(f.entries.as_deref())?;
     let opts = Options {
         input_name: basename(&f.input),
         base_override: f.base,
         force_rom: f.rom,
+        trace_entries,
     };
     let d = libre99_gsl::decompile(&bytes, &opts)?;
     std::fs::write(&out_path, &d.text).map_err(|e| format!("cannot write {out_path}: {e}"))?;
+    if let Some(map_path) = f.map {
+        std::fs::write(&map_path, d.instruction_map.to_json())
+            .map_err(|e| format!("cannot write {map_path}: {e}"))?;
+        eprintln!("wrote {map_path}");
+    }
     eprintln!("wrote {out_path} ({:?})", d.format);
     print_stats(&d.stats);
     Ok(())
@@ -208,10 +259,12 @@ fn cmd_roundtrip(args: &[String]) -> Result<(), String> {
     let f = parse_flags(args)?;
     one_input(&f)?;
     let bytes = std::fs::read(&f.input).map_err(|e| format!("cannot read {}: {e}", f.input))?;
+    let trace_entries = read_trace_entries(f.entries.as_deref())?;
     let opts = Options {
         input_name: basename(&f.input),
         base_override: f.base,
         force_rom: f.rom,
+        trace_entries,
     };
     // decompile() verifies byte-identity internally (it refuses to return
     // otherwise), so reaching here IS the round-trip proof.
@@ -219,6 +272,11 @@ fn cmd_roundtrip(args: &[String]) -> Result<(), String> {
     if let Some(keep) = f.keep {
         std::fs::write(&keep, &d.text).map_err(|e| format!("cannot write {keep}: {e}"))?;
         eprintln!("kept {keep}");
+    }
+    if let Some(map_path) = f.map {
+        std::fs::write(&map_path, d.instruction_map.to_json())
+            .map_err(|e| format!("cannot write {map_path}: {e}"))?;
+        eprintln!("wrote {map_path}");
     }
     println!(
         "roundtrip OK: {} — {} grom page(s), {} rom byte(s) reproduced byte-identically ({:?})",
@@ -238,6 +296,12 @@ fn cmd_roundtrip(args: &[String]) -> Result<(), String> {
 /// that keeps `verify` green can have produced a bad name, never a bad byte.
 fn cmd_verify(args: &[String]) -> Result<(), String> {
     let f = parse_flags(args)?;
+    if f.entries.is_some() {
+        return Err("--entries applies only to decompile and roundtrip".into());
+    }
+    if f.map.is_some() {
+        return Err("--map applies only to decompile and roundtrip".into());
+    }
     let against = f
         .second
         .clone()
@@ -273,13 +337,14 @@ fn cmd_verify(args: &[String]) -> Result<(), String> {
 
 fn print_stats(s: &libre99_gsl::decompile::Stats) {
     eprintln!(
-        "  {} fn(s); {} statements ({} bytes); {} raw-byte instr(s) ({} bytes, {} demoted); {} data bytes; {} zero bytes elided; {} verify round(s)",
+        "  {} fn(s); {} statements ({} bytes); {} raw-byte instr(s) ({} bytes, {} demoted); {} inline operand bytes; {} data bytes; {} zero bytes elided; {} verify round(s)",
         s.fns,
         s.stmt_instrs,
         s.stmt_bytes,
         s.fallback_instrs + s.demoted_instrs,
         s.fallback_bytes,
         s.demoted_instrs,
+        s.inline_bytes,
         s.data_bytes,
         s.elided_zero_bytes,
         s.rounds
@@ -291,4 +356,27 @@ fn basename(p: &str) -> String {
         .file_name()
         .map(|s| s.to_string_lossy().into_owned())
         .unwrap_or_else(|| p.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{parse_flags, parse_trace_entries};
+
+    #[test]
+    fn trace_entries_are_hex_only_sorted_and_deduplicated() {
+        assert_eq!(
+            parse_trace_entries("# trace-confirmed GPL starts\n>6651\n0x6020 # entry\n6651\n")
+                .unwrap(),
+            vec![0x6020, 0x6651]
+        );
+        assert!(parse_trace_entries(">6020 extra\n").is_err());
+    }
+
+    #[test]
+    fn map_flag_is_recorded_for_decompiler_commands() {
+        let args = ["input.ctg", "-o", "output.gsl", "--map", "tiles.json"]
+            .map(str::to_string);
+        let flags = parse_flags(&args).unwrap();
+        assert_eq!(flags.map.as_deref(), Some("tiles.json"));
+    }
 }

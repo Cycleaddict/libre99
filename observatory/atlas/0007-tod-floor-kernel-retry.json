@@ -1,0 +1,134 @@
+{
+  "atlas_version": 1,
+  "package": "tod-floor-kernel-retry",
+  "title": "Tunnels of Doom per-floor kernel direct retry",
+  "summary": "Append-only G-006 package for the source-decoded direct retry contract, frozen bounded prediction, and one authentic comparison. It preserves package 0005 and stores no commercial bytes or owner-local paths.",
+  "seeded_from": "docs/TOD-FLOOR-KERNEL-RETRY.md and owner-local evidence identities",
+  "evidence": [
+    {
+      "id": "ev.doc.tod-floor-kernel-retry",
+      "kind": "tracked-document",
+      "ref": "docs/TOD-FLOOR-KERNEL-RETRY.md",
+      "detail": "source-addressed predicate/reset/continuation contract, frozen prediction identity, authentic comparison, and residual checker uncertainty"
+    },
+    {
+      "id": "ev.tool.tod-floor-kernel-model-v2",
+      "kind": "tracked-document",
+      "ref": "tools/tod_floor_kernel_model.py",
+      "detail": "bounded direct-retry model and explicit refusal boundary for the separate post-pass checker"
+    },
+    {
+      "id": "ev.exp.floor-kernel-retry",
+      "kind": "owner-local-experiment",
+      "ref": "tod-mvp/floor-kernel-retry-2026-08-27",
+      "detail": "one A5C3 checkpoint case with two predeclared count mutations; trace comparison ends at the recurring direct predicate",
+      "counts": {"runs": 1, "modeled_restarts": 1, "candidate_writes": 1896, "random_calls": 2, "first_mismatches": 0}
+    }
+  ],
+  "entities": [
+    {
+      "id": "tod.floor-kernel-retry",
+      "kind": "subsystem",
+      "name": "bounded direct retry contract",
+      "order": 0,
+      "detail": "direct >84EB predicate, mode->01 reset, and >8283 continuation"
+    },
+    {
+      "id": "tod.floor-kernel.model-v2",
+      "kind": "routine",
+      "name": "tod-floor-candidate-kernel model version 2",
+      "subsystem": "tod.floor-kernel-retry",
+      "order": 10,
+      "space": "offline-model"
+    },
+    {
+      "id": "tod.floor-kernel.experiment.retry-a5c3",
+      "kind": "experiment",
+      "name": "frozen A5C3 direct-retry comparison",
+      "subsystem": "tod.floor-kernel-retry",
+      "order": 20
+    },
+    {
+      "id": "tod.floor-kernel.effect.retry-cycle",
+      "kind": "effect",
+      "name": "mode->01 reset and placement continuation",
+      "subsystem": "tod.floor-kernel-retry",
+      "order": 30,
+      "space": "GPL-control"
+    }
+  ],
+  "facts": [
+    {
+      "id": "fact.floor-kernel.retry.direct-predicate",
+      "subject": "tod.floor-kernel.model-v2",
+      "predicate": "direct-retry-predicate",
+      "value": ">833F=>09 AND current payload byte in {>68,>69,>6A} AND neighbors at offsets ->20,+>20,-1,+1 all >6B; surrounded >67 is normalized to >6B instead",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.tod-floor-kernel-retry", "ev.tool.tod-floor-kernel-model-v2"]
+    },
+    {
+      "id": "fact.floor-kernel.retry.reset-contract",
+      "subject": "tod.floor-kernel.effect.retry-cycle",
+      "predicate": "state-transition",
+      "value": ">84EB -> CALL >8605 inline >01 -> >8283; retain normalized >68 and values below >60, reset other >= >60 values to >6B, retain seed/count/position/base-pointer state, restart >67/>6A/>69 placements, and do not repeat initial >68 placement",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.tod-floor-kernel-retry", "ev.tool.tod-floor-kernel-model-v2"]
+    },
+    {
+      "id": "fact.floor-kernel.retry.frozen-prediction",
+      "subject": "tod.floor-kernel.experiment.retry-a5c3",
+      "predicate": "frozen-prediction",
+      "value": "prediction SHA-256 259fe32ca2e9d01a6b30f8b836502b2a94947460338928b2c046ccc5f6f5b568; mutate >1CEC >14->>00 and >1CE6 >02->>00; expect >84EB, >8605 mode >01, >8283, >84EB; 1896 writes; seed >A181; bounded noncompletion",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-floor-kernel-retry", "ev.exp.floor-kernel-retry"]
+    },
+    {
+      "id": "fact.floor-kernel.retry.authentic-result",
+      "subject": "tod.floor-kernel.experiment.retry-a5c3",
+      "predicate": "exact-result",
+      "value": "PASS within one-retry bound: exact control sequence; >8611=948, >863D=947, >8553=1 writes; two RAND calls; seed >A181; payload SHA-256 d759204b718aa1510ffae5384d162efd2ca7b0b7c73542c981ff0921b1c23494; no first mismatch",
+      "classification": "observed",
+      "evidence": ["ev.doc.tod-floor-kernel-retry", "ev.exp.floor-kernel-retry"]
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "hyp.floor-kernel.retry.post-pass-857b",
+      "subject": "tod.floor-kernel.model-v2",
+      "statement": ">857B is a separate predicate that joins the same reset route when true, but its complete payload-level graph/path meaning is not established by the local helper decode",
+      "classification": "unresolved",
+      "alternatives": ["neutral connectivity/path check", "another relation over selected endpoints"],
+      "resolves_when": "the >85B5 calls through >A62B and >A5AF are reconstructed without gameplay naming or a discriminating bounded case is separately authorized",
+      "evidence": ["ev.doc.tod-floor-kernel-retry"]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel.floor-kernel.retry.extends-model",
+      "order": 1,
+      "from": "tod.floor-kernel-retry",
+      "kind": "part-of",
+      "to": "tod.floor-kernel-model",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.tod-floor-kernel-retry"]
+    },
+    {
+      "id": "rel.floor-kernel.retry.predicate-causes-cycle",
+      "order": 10,
+      "from": "tod.floor-kernel.model-v2",
+      "kind": "causes",
+      "to": "tod.floor-kernel.effect.retry-cycle",
+      "classification": "observed",
+      "detail": "source-decoded contract matched the one frozen authentic comparison",
+      "evidence": ["ev.exp.floor-kernel-retry", "ev.doc.tod-floor-kernel-retry"]
+    }
+  ],
+  "queries": [
+    {
+      "id": "q.tod.floor-kernel-retry",
+      "subsystem": "tod.floor-kernel-retry",
+      "question": "What exactly causes the accepted per-floor kernel direct retry, and what state survives it?",
+      "answer": "The source-confirmed direct branch at GPL >84EB requires >833F=>09, a current payload byte >68/>69/>6A, and four >6B neighbors at offsets ->20,+>20,-1,+1; surrounded >67 is cleared instead. CALL >8605 consumes inline mode >01, retaining normalized >68 and bytes below >60 while resetting other >= >60 bytes to >6B without RAND. Control resumes at >8283, retaining seed, count/position sources, and base pointers while restarting >67/>6A/>69 placement and not repeating initial >68 placement. A frozen A5C3 case with only >1CEC and >1CE6 set to zero matched >84EB -> >8605 -> >8283 -> >84EB, 1,896 writes, seed >A181, and the predicted payload exactly. The separate >857B predicate remains unresolved and explicit."
+    }
+  ]
+}

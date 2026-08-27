@@ -74,4 +74,7 @@ pub mod wellknown;
 pub use ast::OutFormat;
 pub use codegen::{compile, Compiled, GslError};
 pub use container::{parse_input, payload_of, write_output, Payload};
-pub use decompile::{decompile, Decompiled, Options};
+pub use decompile::{
+    decompile, Decompiled, InstructionMap, InstructionMapEntry, InstructionMapSummary, MapRange,
+    MapSpan, Options,
+};

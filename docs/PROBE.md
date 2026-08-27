@@ -128,11 +128,17 @@ the game" into machine-checkable facts about which code ran.
 | `trace` / `trace tail [N]` | Log size / the last `N` fetches (default 32). |
 | `trace summary` | Fetch counts per 256-byte page, cart vs. console — a fast "what ran just now". |
 | `trace save FILE` | The full log, one `>ADDR BYTE` per line, for offline analysis (e.g. bucketing by a decompilation's function ranges). |
+| `vtrace on [LO HI]` / `vtrace off` | Record VDP data-port writes, optionally restricted to an inclusive 14-bit VRAM range. Each record carries modeled cycle/frame position, causing CPU instruction start PC/opcode, R11 and R9 (GPL opcode on the interpreter workspace), the prefetch-corrected GROM stream address and next GROM byte, port operation/address, actual VRAM destination, prior byte, and written byte. `on` restarts the log; the recorder allocates nothing while off. |
+| `vtrace` / `vtrace show` / `vtrace tail [N]` | Show the active filter and count, or the last `N` causally attributed VDP writes. Diagnostic `vpoke` writes are intentionally excluded. |
+| `vtrace clear` / `vtrace save FILE` | Clear the active log without changing its filter, or write the complete text provenance log. Like other diagnostics, recording is not serialized and is reset by `load`. |
+| `mtrace on SPACE ACCESS LO HI [SPACE ACCESS LO HI ...]` / `mtrace off` | Start or end one explicit mutable-state capture window. `SPACE` is `cpu`, `vram`, or `grom`; `ACCESS` is `r`, `w`, or `rw` (`grom` is read-only). CPU filters must stay within writable RAM (`>2000–3FFF`, scratchpad `>8000–83FF`, or `>A000–FFFF`); VRAM filters are 14-bit. Multiple inclusive filters may be armed together. |
+| `mtrace` / `mtrace show` / `mtrace tail [N]` | Show filters/count or recent accesses. Each machine-readable record carries modeled cycle/frame, native PC/opcode, R11/R9, GPL stream address/byte, space/direction, semantic address, optional device port and prior write value, and the byte read or written. VDP reads report the true read-ahead source; GROM reads report the prefetch-corrected source. Diagnostic peeks/pokes are excluded. |
+| `mtrace clear` / `mtrace save FILE` | Clear the active log or write it as one stable `key=value` record per line. Recording is optional, allocates nothing while off, and is reset by `load`; keep both the address filters and the on/off window narrow. |
 | `cover on` / `cover off` | Record **coverage bitmaps**: every distinct GROM address read and every distinct CPU PC executed. Compact where the trace is huge — leave coverage on for a whole session to measure how much of a cartridge was reached. |
 | `cover` (or `cover summary`) | Counts and range counts for both bitmaps. |
 | `cover save FILE` | The bitmaps as inclusive address ranges (`grom >6000->6123` / `cpu >0024->0100` lines). |
 | `save FILE` | A complete machine save state — the same self-contained format v3 as the desktop app (RAM, VRAM, GROM image, cartridge, mounted disks, chip latches). |
-| `load FILE` | Restore one, exactly. Note: trace/cover recording does not survive a load (re-arm afterwards). Save states from the desktop app load here and vice versa. |
+| `load FILE` | Restore one, exactly. Note: trace/vtrace/mtrace/cover recording does not survive a load (re-arm afterwards). Save states from the desktop app load here and vice versa. |
 
 The `save`/`load` pair is the branch-exploration tool: checkpoint before a
 menu, try option 1, `load`, try option 2 — no replaying the session.

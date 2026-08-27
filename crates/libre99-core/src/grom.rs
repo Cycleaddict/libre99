@@ -155,7 +155,11 @@ impl Grom {
     /// bitmap (so each enable starts a clean sweep); disabling drops it, freeing
     /// the 8 KiB and making every coverage query inert.
     pub fn record_coverage(&mut self, on: bool) {
-        self.coverage = if on { Some(Box::new([0u64; 1024])) } else { None };
+        self.coverage = if on {
+            Some(Box::new([0u64; 1024]))
+        } else {
+            None
+        };
     }
 
     /// Load `bytes` into the GROM address space starting at `addr` (wrapping at
@@ -184,6 +188,18 @@ impl Grom {
     /// Inspect the current address counter (diagnostics).
     pub fn address(&self) -> u16 {
         self.address
+    }
+
+    /// Prefetch-corrected address of the byte the next data read will return.
+    /// Diagnostic only; no side effects. For GPL this is the stream position
+    /// of the next byte the interpreter will consume.
+    pub fn next_data_address(&self) -> u16 {
+        self.buffered_read_addr()
+    }
+
+    /// Byte currently in the prefetch buffer. Diagnostic only; no side effects.
+    pub fn next_data_byte(&self) -> u8 {
+        self.buffer
     }
 
     /// Fetch `data[counter]` into the buffer and advance the counter, wrapping
@@ -344,6 +360,20 @@ mod tests {
     }
 
     #[test]
+    fn next_data_address_is_the_prefetch_corrected_stream_position() {
+        let mut g = Grom::new();
+        g.load(0x6010, &[0xBE, 0xEF]);
+        g.write_address(0x60);
+        g.write_address(0x10);
+        assert_eq!(g.next_data_address(), 0x6010);
+        assert_eq!(g.next_data_byte(), 0xBE);
+        assert_eq!(g.address(), 0x6011);
+        assert_eq!(g.read_data(), 0xBE);
+        assert_eq!(g.next_data_address(), 0x6011);
+        assert_eq!(g.next_data_byte(), 0xEF);
+    }
+
+    #[test]
     fn coverage_bitmap_marks_the_true_prefetch_corrected_read_addresses() {
         let mut g = Grom::new();
         g.load(0x1234, &[0xDE, 0xAD, 0xBE, 0xEF]);
@@ -416,6 +446,9 @@ mod tests {
         let mut r = crate::state::StateReader::new(&bytes);
         g.load_state(&mut r).unwrap();
 
-        assert!(!g.was_read(0x0000), "coverage must be dropped by load_state");
+        assert!(
+            !g.was_read(0x0000),
+            "coverage must be dropped by load_state"
+        );
     }
 }

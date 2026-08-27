@@ -65,6 +65,7 @@
 //! affects readability, never correctness.
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::fmt::Write as _;
 
 use libre99_gpl::decode::{decode_at, Decoded, Flow};
 use libre99_gpl::isa::{decode_sig, MoveBits, Sig};
@@ -77,6 +78,43 @@ use crate::fmtscan::{self, FmtBlock};
 use crate::wellknown;
 
 const PAGE: usize = 0x2000;
+const INLINE_FETCH_SCAN_LIMIT: usize = 16;
+
+/// Return the number of caller-stream bytes consumed by a callee's provable
+/// leading FETCH operations. Direct branches and a conditional branch whose
+/// target is its own fall-through are transparent; everything else ends the
+/// prefix. Any uncertainty rejects the inference.
+fn leading_fetch_bytes(img: &[u8], pages: &BTreeSet<u16>, start: u16) -> Option<u16> {
+    let present = |addr: u16| pages.contains(&(addr & 0xE000));
+    let mut addr = start;
+    let mut count = 0u16;
+    let mut seen = BTreeSet::new();
+
+    for _ in 0..INLINE_FETCH_SCAN_LIMIT {
+        if !seen.insert(addr) || !present(addr) {
+            return None;
+        }
+        let d = decode_at(img, addr as usize, addr).ok()?;
+        let len = u16::try_from(d.len).ok()?;
+        let end = addr.checked_add(len)?;
+        if !(addr..end).all(&present) {
+            return None;
+        }
+
+        if d.mnemonic == "FETCH" {
+            count = count.checked_add(1)?;
+            addr = end;
+            continue;
+        }
+
+        match d.flow {
+            Flow::Jump(target) => addr = target,
+            Flow::Cond(target) if target == end => addr = end,
+            Flow::Fall | Flow::Call(_) | Flow::Cond(_) | Flow::Stop => return Some(count),
+        }
+    }
+    None
+}
 
 /// Decompiler options.
 #[derive(Debug, Clone, Default)]
@@ -87,6 +125,8 @@ pub struct Options {
     pub base_override: Option<u16>,
     /// Treat a raw `.bin` as a CPU-ROM dump.
     pub force_rom: bool,
+    /// Runtime-confirmed GPL instruction starts, processed before static roots.
+    pub trace_entries: Vec<u16>,
 }
 
 /// Decompilation statistics (also embedded in the output banner).
@@ -98,6 +138,7 @@ pub struct Stats {
     pub fallback_instrs: usize,
     pub fallback_bytes: usize,
     pub demoted_instrs: usize,
+    pub inline_bytes: usize,
     pub data_bytes: usize,
     pub elided_zero_bytes: usize,
     pub rounds: usize,
@@ -110,6 +151,180 @@ pub struct Decompiled {
     pub format: OutFormat,
     pub payload: Payload,
     pub stats: Stats,
+    /// Deterministic structural byte roles from the final verified tiling.
+    pub instruction_map: InstructionMap,
+}
+
+/// A GROM address range present in an instruction map.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MapRange {
+    pub start: u16,
+    pub end: u16,
+}
+
+/// One non-overlapping byte-role span inside an instruction-map tile.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MapSpan {
+    pub start: u16,
+    pub end: u16,
+    pub role: &'static str,
+    pub byte_value: Option<u8>,
+}
+
+/// One final accepted decompiler tile or caller-inline operand range.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InstructionMapEntry {
+    pub start: u16,
+    pub end: u16,
+    pub owner: String,
+    pub kind: &'static str,
+    pub statement_start: Option<u16>,
+    pub opcode_byte: Option<u8>,
+    pub demoted: bool,
+    pub spans: Vec<MapSpan>,
+}
+
+/// Counts for the final verified decompiler tiling.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct InstructionMapSummary {
+    pub structured_statements: usize,
+    pub structured_bytes: usize,
+    pub fmt_statements: usize,
+    pub raw_instructions: usize,
+    pub raw_instruction_bytes: usize,
+    pub demoted_instructions: usize,
+    pub inline_operand_ranges: usize,
+    pub inline_operand_bytes: usize,
+}
+
+/// Machine-readable structural map produced from the verified decompiler's
+/// final accepted pieces. Data and elided padding remain outside this map.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct InstructionMap {
+    pub schema_version: u32,
+    pub payload_ranges: Vec<MapRange>,
+    pub summary: InstructionMapSummary,
+    pub entries: Vec<InstructionMapEntry>,
+}
+
+impl InstructionMap {
+    /// Serialize with stable field and entry ordering without adding a JSON
+    /// dependency to the pure-`std` GSL toolchain.
+    pub fn to_json(&self) -> String {
+        fn quoted(out: &mut String, value: &str) {
+            out.push('"');
+            for ch in value.chars() {
+                match ch {
+                    '"' => out.push_str("\\\""),
+                    '\\' => out.push_str("\\\\"),
+                    '\n' => out.push_str("\\n"),
+                    '\r' => out.push_str("\\r"),
+                    '\t' => out.push_str("\\t"),
+                    c if c < ' ' => {
+                        write!(out, "\\u{:04X}", c as u32).expect("write to String");
+                    }
+                    c => out.push(c),
+                }
+            }
+            out.push('"');
+        }
+        fn address(out: &mut String, value: u16) {
+            write!(out, "\">{value:04X}\"").expect("write to String");
+        }
+
+        let mut out = String::new();
+        writeln!(out, "{{").expect("write to String");
+        writeln!(out, "  \"schema_version\": {},", self.schema_version)
+            .expect("write to String");
+        writeln!(out, "  \"payload_ranges\": [").expect("write to String");
+        for (index, range) in self.payload_ranges.iter().enumerate() {
+            out.push_str("    {\"start\": ");
+            address(&mut out, range.start);
+            out.push_str(", \"end\": ");
+            address(&mut out, range.end);
+            writeln!(
+                out,
+                "}}{}",
+                if index + 1 == self.payload_ranges.len() { "" } else { "," }
+            )
+            .expect("write to String");
+        }
+        writeln!(out, "  ],").expect("write to String");
+        writeln!(out, "  \"summary\": {{").expect("write to String");
+        writeln!(
+            out,
+            "    \"structured_statements\": {},\n    \"structured_bytes\": {},\n    \"fmt_statements\": {},\n    \"raw_instructions\": {},\n    \"raw_instruction_bytes\": {},\n    \"demoted_instructions\": {},\n    \"inline_operand_ranges\": {},\n    \"inline_operand_bytes\": {}",
+            self.summary.structured_statements,
+            self.summary.structured_bytes,
+            self.summary.fmt_statements,
+            self.summary.raw_instructions,
+            self.summary.raw_instruction_bytes,
+            self.summary.demoted_instructions,
+            self.summary.inline_operand_ranges,
+            self.summary.inline_operand_bytes,
+        )
+        .expect("write to String");
+        writeln!(out, "  }},").expect("write to String");
+        writeln!(out, "  \"entries\": [").expect("write to String");
+        for (entry_index, entry) in self.entries.iter().enumerate() {
+            out.push_str("    {\n      \"start\": ");
+            address(&mut out, entry.start);
+            out.push_str(",\n      \"end\": ");
+            address(&mut out, entry.end);
+            write!(
+                out,
+                ",\n      \"byte_length\": {},\n      \"owner\": ",
+                entry.end as usize - entry.start as usize + 1
+            )
+            .expect("write to String");
+            quoted(&mut out, &entry.owner);
+            out.push_str(",\n      \"tile_kind\": ");
+            quoted(&mut out, entry.kind);
+            out.push_str(",\n      \"statement_start\": ");
+            match entry.statement_start {
+                Some(value) => address(&mut out, value),
+                None => out.push_str("null"),
+            }
+            out.push_str(",\n      \"opcode_byte\": ");
+            match entry.opcode_byte {
+                Some(value) => write!(out, "\">{value:02X}\"").expect("write to String"),
+                None => out.push_str("null"),
+            }
+            write!(out, ",\n      \"demoted\": {},\n      \"spans\": [\n", entry.demoted)
+                .expect("write to String");
+            for (span_index, span) in entry.spans.iter().enumerate() {
+                out.push_str("        {\"start\": ");
+                address(&mut out, span.start);
+                out.push_str(", \"end\": ");
+                address(&mut out, span.end);
+                write!(
+                    out,
+                    ", \"byte_length\": {}, \"role\": ",
+                    span.end as usize - span.start as usize + 1
+                )
+                .expect("write to String");
+                quoted(&mut out, span.role);
+                if let Some(value) = span.byte_value {
+                    write!(out, ", \"byte_value\": \">{value:02X}\"")
+                        .expect("write to String");
+                }
+                writeln!(
+                    out,
+                    "}}{}",
+                    if span_index + 1 == entry.spans.len() { "" } else { "," }
+                )
+                .expect("write to String");
+            }
+            writeln!(
+                out,
+                "      ]\n    }}{}",
+                if entry_index + 1 == self.entries.len() { "" } else { "," }
+            )
+            .expect("write to String");
+        }
+        writeln!(out, "  ]\n}}").expect("write to String");
+        out
+    }
 }
 
 /// Decompile an input image to GSL text, verifying byte-identity before
@@ -212,11 +427,24 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
         });
     }
 
+    let trace_entries: BTreeSet<u16> = opts.trace_entries.iter().copied().collect();
+    for &addr in &trace_entries {
+        if !present(addr) {
+            return Err(format!("trace entry >{addr:04X} is outside the loaded GROM pages"));
+        }
+        if entries.iter().any(|e| e.addr == addr) {
+            continue;
+        }
+        let name = unique(format!("trace_{addr:04X}"), &mut used_names);
+        entries.push(Entry { addr, name, desc: "trace-confirmed GPL instruction entry".into() });
+    }
+
     // ---- trace -------------------------------------------------------------
     enum TKind {
         Stmt(Decoded),
         Fallback(Decoded, String),
         Fmt(FmtBlock),
+        Inline { callee: u16 },
     }
     struct Tile {
         len: u16,
@@ -226,7 +454,9 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
     let mut covered = vec![false; 0x10000];
     let mut callers: BTreeMap<u16, Vec<u16>> = BTreeMap::new();
     let mut gromrefs: BTreeMap<u16, Vec<u16>> = BTreeMap::new();
-    let mut work: VecDeque<u16> = entries.iter().map(|e| e.addr).collect();
+    let mut inline_counts: BTreeMap<u16, Option<u16>> = BTreeMap::new();
+    let mut work: VecDeque<u16> = trace_entries.iter().copied().collect();
+    work.extend(entries.iter().map(|e| e.addr));
 
     while let Some(addr) = work.pop_front() {
         if tiles.contains_key(&addr) || covered[addr as usize] || !present(addr) {
@@ -282,13 +512,57 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
         match flow {
             Flow::Fall => work.extend(fall),
             Flow::Jump(t) => work.push_back(t),
-            Flow::Call(t) | Flow::Cond(t) => {
+            Flow::Call(t) => {
+                work.push_back(t);
+                let inline_len =
+                    *inline_counts.entry(t).or_insert_with(|| leading_fetch_bytes(&img, &pages, t));
+                match (fall, inline_len) {
+                    (Some(inline_addr), Some(inline_len)) if inline_len != 0 => {
+                        let inline_end = inline_addr.checked_add(inline_len).ok_or_else(|| {
+                            format!("CALL >{t:04X} at >{addr:04X} has truncated inline operands")
+                        })?;
+                        let conflicts_trace = trace_entries.range(inline_addr..inline_end).next();
+                        let range = inline_addr as usize..inline_end as usize;
+                        if !(inline_addr..inline_end).all(&present)
+                            || covered[range.clone()].iter().any(|&c| c)
+                            || conflicts_trace.is_some()
+                        {
+                            return Err(format!(
+                                "CALL >{t:04X} at >{addr:04X} has conflicting inline operands >{inline_addr:04X}..>{:04X}",
+                                inline_end - 1
+                            ));
+                        }
+                        covered[range].fill(true);
+                        tiles.insert(
+                            inline_addr,
+                            Tile { len: inline_len, kind: TKind::Inline { callee: t } },
+                        );
+                        work.push_back(inline_end);
+                    }
+                    (Some(fall), _) => work.push_back(fall),
+                    (None, Some(inline_len)) if inline_len != 0 => {
+                        return Err(format!(
+                            "CALL >{t:04X} at >{addr:04X} has truncated inline operands"
+                        ));
+                    }
+                    (None, _) => {}
+                }
+            }
+            Flow::Cond(t) => {
                 work.push_back(t);
                 work.extend(fall);
             }
             Flow::Stop => {}
         }
         tiles.insert(addr, Tile { len, kind });
+    }
+
+    for &addr in &trace_entries {
+        if !tiles.contains_key(&addr) {
+            return Err(format!(
+                "trace entry >{addr:04X} could not be decoded on an instruction boundary"
+            ));
+        }
     }
 
     // ---- boundaries --------------------------------------------------------
@@ -393,6 +667,7 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
                     continue;
                 }
                 TKind::Stmt(d) | TKind::Fallback(d, _) => d,
+                TKind::Inline { .. } => continue,
             };
             if let Flow::Call(t) = d.flow {
                 info.calls.insert(t);
@@ -810,6 +1085,7 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
         Stmt { addr: u16, len: u16, text: String, note: Option<String>, demoted: bool },
         Fmt { addr: u16, len: u16, lines: Vec<String>, notes: Vec<String>, demoted: bool },
         Bytes { addr: u16, len: u16, notes: Vec<String> },
+        Inline { addr: u16, len: u16, callee: u16 },
         Data { addr: u16, len: usize, comments: Vec<String> },
     }
     let mut pieces: Vec<Piece> = Vec::new();
@@ -1008,6 +1284,9 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
                 pieces.push(Piece::Fn { addr, comments });
             }
             match &tile.kind {
+                TKind::Inline { callee } => {
+                    pieces.push(Piece::Inline { addr, len: tile.len, callee: *callee });
+                }
                 TKind::Fmt(b) => {
                     let mut notes =
                         vec![format!("* >{addr:04X}  FMT block, {} sub-ops:", b.ops.len())];
@@ -1148,12 +1427,13 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
         push(
             &mut out,
             &format!(
-                "// coverage: {} statements ({} bytes), {} raw-byte instrs ({} bytes, {} demoted), {} data bytes, {} zero bytes elided",
+                "// coverage: {} statements ({} bytes), {} raw-byte instrs ({} bytes, {} demoted), {} inline operand bytes, {} data bytes, {} zero bytes elided",
                 stats.stmt_instrs,
                 stats.stmt_bytes,
                 stats.fallback_instrs + stats.demoted_instrs,
                 stats.fallback_bytes,
                 stats.demoted_instrs,
+                stats.inline_bytes,
                 stats.data_bytes,
                 stats.elided_zero_bytes,
             ),
@@ -1430,6 +1710,20 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
                     }
                     emit_byte_rows(&mut out, &img, *addr, *len);
                 }
+                Piece::Inline { addr, len, callee } => {
+                    if !asm_open {
+                        push(&mut out, "    asm {");
+                        asm_open = true;
+                    }
+                    push(
+                        &mut out,
+                        &format!(
+                            "* >{addr:04X}  {len} inline byte{} consumed by CALL >{callee:04X}",
+                            if *len == 1 { "" } else { "s" }
+                        ),
+                    );
+                    emit_byte_rows(&mut out, &img, *addr, *len);
+                }
             }
         }
         close_fn(&mut out, &mut fn_open, &mut asm_open);
@@ -1478,6 +1772,7 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
                     s.fallback_instrs += 1;
                     s.fallback_bytes += *len as usize;
                 }
+                Piece::Inline { len, .. } => s.inline_bytes += *len as usize,
                 Piece::Data { len, .. } => s.data_bytes += len,
             }
         }
@@ -1508,7 +1803,206 @@ pub fn decompile(bytes: &[u8], opts: &Options) -> Result<Decompiled, String> {
         if diffs.is_empty() {
             let stats = compute_stats(&pieces, rounds);
             let text = render(&pieces, &em, &stats);
-            return Ok(Decompiled { text, format, payload, stats });
+            let owner_of = |addr: u16| {
+                fn_of(addr).cloned().unwrap_or_else(|| format!("unowned_{addr:04X}"))
+            };
+            let mut entries = Vec::new();
+            let mut summary = InstructionMapSummary::default();
+            for piece in &pieces {
+                let (addr, len, map_kind, statement_start, demoted, spans) = match piece {
+                    Piece::Stmt { addr, len, demoted: true, .. }
+                    | Piece::Fmt { addr, len, demoted: true, .. } => {
+                        let mut spans = vec![MapSpan {
+                            start: *addr,
+                            end: *addr,
+                            role: "raw-opcode",
+                            byte_value: Some(img[*addr as usize]),
+                        }];
+                        if *len > 1 {
+                            spans.push(MapSpan {
+                                start: addr + 1,
+                                end: addr + len - 1,
+                                role: "raw-instruction",
+                                byte_value: None,
+                            });
+                        }
+                        (addr, len, "raw-instruction", Some(*addr), true, spans)
+                    }
+                    Piece::Stmt { addr, len, demoted: false, .. } => {
+                        let end = *addr as u32 + *len as u32;
+                        let mut spans = Vec::new();
+                        for (&part_addr, tile) in tiles
+                            .range(*addr..)
+                            .take_while(|(part_addr, _)| (**part_addr as u32) < end)
+                        {
+                            if !matches!(tile.kind, TKind::Stmt(_)) {
+                                return Err(format!(
+                                    "instruction-map statement >{addr:04X} crosses non-statement tile >{part_addr:04X}"
+                                ));
+                            }
+                            spans.push(MapSpan {
+                                start: part_addr,
+                                end: part_addr,
+                                role: "opcode",
+                                byte_value: Some(img[part_addr as usize]),
+                            });
+                            if tile.len > 1 {
+                                spans.push(MapSpan {
+                                    start: part_addr + 1,
+                                    end: part_addr + tile.len - 1,
+                                    role: "operand",
+                                    byte_value: None,
+                                });
+                            }
+                        }
+                        (addr, len, "statement", Some(*addr), false, spans)
+                    }
+                    Piece::Fmt { addr, len, demoted: false, .. } => {
+                        let mut spans = vec![MapSpan {
+                            start: *addr,
+                            end: *addr,
+                            role: "opcode",
+                            byte_value: Some(img[*addr as usize]),
+                        }];
+                        if *len > 1 {
+                            spans.push(MapSpan {
+                                start: addr + 1,
+                                end: addr + len - 1,
+                                role: "fmt",
+                                byte_value: None,
+                            });
+                        }
+                        (addr, len, "fmt", Some(*addr), false, spans)
+                    }
+                    Piece::Bytes { addr, len, .. } => {
+                        let mut spans = vec![MapSpan {
+                            start: *addr,
+                            end: *addr,
+                            role: "raw-opcode",
+                            byte_value: Some(img[*addr as usize]),
+                        }];
+                        if *len > 1 {
+                            spans.push(MapSpan {
+                                start: addr + 1,
+                                end: addr + len - 1,
+                                role: "raw-instruction",
+                                byte_value: None,
+                            });
+                        }
+                        (addr, len, "raw-instruction", Some(*addr), false, spans)
+                    }
+                    Piece::Inline { addr, len, .. } => (
+                        addr,
+                        len,
+                        "inline-operand",
+                        None,
+                        false,
+                        vec![MapSpan {
+                            start: *addr,
+                            end: addr + len - 1,
+                            role: "inline-operand",
+                            byte_value: None,
+                        }],
+                    ),
+                    Piece::Fn { .. } | Piece::Data { .. } => continue,
+                };
+                let end = addr.checked_add(*len - 1).ok_or("instruction-map tile range overflow")?;
+                let opcode_byte = (map_kind != "inline-operand").then_some(img[*addr as usize]);
+                match map_kind {
+                    "statement" => {
+                        summary.structured_statements += 1;
+                        summary.structured_bytes += *len as usize;
+                    }
+                    "fmt" => {
+                        summary.structured_statements += 1;
+                        summary.structured_bytes += *len as usize;
+                        summary.fmt_statements += 1;
+                    }
+                    "raw-instruction" => {
+                        summary.raw_instructions += 1;
+                        summary.raw_instruction_bytes += *len as usize;
+                        if demoted {
+                            summary.demoted_instructions += 1;
+                        }
+                    }
+                    "inline-operand" => {
+                        summary.inline_operand_ranges += 1;
+                        summary.inline_operand_bytes += *len as usize;
+                    }
+                    _ => unreachable!(),
+                }
+                entries.push(InstructionMapEntry {
+                    start: *addr,
+                    end,
+                    owner: owner_of(*addr),
+                    kind: map_kind,
+                    statement_start,
+                    opcode_byte,
+                    demoted,
+                    spans,
+                });
+            }
+
+            let instruction_map = InstructionMap {
+                schema_version: 1,
+                payload_ranges: pages
+                    .iter()
+                    .map(|&start| MapRange { start, end: start + (PAGE as u16 - 1) })
+                    .collect(),
+                summary,
+                entries,
+            };
+            let mut previous_end = None;
+            for entry in &instruction_map.entries {
+                if previous_end.is_some_and(|end| entry.start <= end) {
+                    return Err(format!(
+                        "instruction-map overlap at >{:04X}..>{:04X}",
+                        entry.start, entry.end
+                    ));
+                }
+                if entry.end < entry.start || !(entry.start..=entry.end).all(&present) {
+                    return Err(format!(
+                        "instruction-map tile >{:04X}..>{:04X} is outside loaded GROM",
+                        entry.start, entry.end
+                    ));
+                }
+                let mut cursor = entry.start;
+                for span in &entry.spans {
+                    if span.start != cursor || span.end < span.start || span.end > entry.end {
+                        return Err(format!(
+                            "instruction-map span partition fails at >{:04X}",
+                            entry.start
+                        ));
+                    }
+                    if let Some(value) = span.byte_value {
+                        if span.start != span.end || img[span.start as usize] != value {
+                            return Err(format!(
+                                "instruction-map opcode value mismatch at >{:04X}",
+                                span.start
+                            ));
+                        }
+                    }
+                    cursor = span.end.checked_add(1).unwrap_or(0);
+                }
+                if cursor != entry.end.checked_add(1).unwrap_or(0) {
+                    return Err(format!(
+                        "instruction-map spans do not cover >{:04X}..>{:04X}",
+                        entry.start, entry.end
+                    ));
+                }
+                previous_end = Some(entry.end);
+            }
+            if instruction_map.summary.structured_statements != stats.stmt_instrs
+                || instruction_map.summary.structured_bytes != stats.stmt_bytes
+                || instruction_map.summary.raw_instructions
+                    != stats.fallback_instrs + stats.demoted_instrs
+                || instruction_map.summary.raw_instruction_bytes != stats.fallback_bytes
+                || instruction_map.summary.demoted_instructions != stats.demoted_instrs
+                || instruction_map.summary.inline_operand_bytes != stats.inline_bytes
+            {
+                return Err("instruction-map summary differs from verified decompiler stats".into());
+            }
+            return Ok(Decompiled { text, format, payload, stats, instruction_map });
         }
         // Demote the statements covering the mismatched bytes and retry.
         let bad = container::grom_mismatches(&payload, &got);

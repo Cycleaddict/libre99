@@ -27,6 +27,10 @@ target
 # Assembler POC build artifacts (hand-written .asm, generated .ctg/.bin, etc.)
 assembler/poc/
 
+# Observatory campaign helper (Python stdlib)
+tools/__pycache__/
+tools/*.pyc
+
 # RustRover
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore

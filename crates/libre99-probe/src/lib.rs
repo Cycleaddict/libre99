@@ -65,7 +65,10 @@ use std::fs;
 
 use libre99_core::cartridge::Cartridge;
 use libre99_core::keyboard::TiKey;
-use libre99_core::machine::Machine;
+use libre99_core::machine::{
+    Machine, StateAccess, StateAccessFilter, StateAccessProvenance, StateFilter, StateSpace,
+    VdpPortOperation, VdpWriteProvenance, CYCLES_PER_FRAME,
+};
 use libre99_core::vdp::{HEIGHT, PALETTE, WIDTH};
 
 /// The clean-room console ROM the probe boots by default — the same committed
@@ -180,6 +183,8 @@ impl Session {
             "save" => self.cmd_save(rest),
             "load" => self.cmd_load(rest),
             "trace" => self.cmd_trace(&args, rest),
+            "vtrace" => self.cmd_vtrace(&args, rest),
+            "mtrace" => self.cmd_mtrace(&args, rest),
             "cover" => self.cmd_cover(&args, rest),
             "audio" => self.cmd_audio(&args),
             "source" => self.cmd_source(rest),
@@ -550,7 +555,7 @@ impl Session {
         self.m.load_state(&bytes).map_err(|e| format!("could not load {rest}: {e:?}"))?;
         self.held.clear();
         Ok(Reply::Text(format!(
-            "state restored from {rest} (note: trace/cover recording is reset by a load)"
+            "state restored from {rest} (note: trace/vtrace/mtrace/cover recording is reset by a load)"
         )))
     }
 
@@ -644,6 +649,197 @@ impl Session {
             }
             Some(other) => Err(format!(
                 "unknown trace subcommand {other:?} — on|off|tail [N]|summary|save FILE"
+            )),
+        }
+    }
+
+    fn cmd_vtrace(&mut self, args: &[&str], rest: &str) -> Result<Reply, String> {
+        match args.first().copied() {
+            None | Some("show") => match self.m.bus().vdp_write_filter() {
+                Some((start, end)) => Ok(Reply::Text(format!(
+                    "vtrace on for VRAM >{start:04X}->{end:04X}; log holds {} writes",
+                    self.m.bus().vdp_write_log().len()
+                ))),
+                None => Ok(Reply::Text("vtrace off (no log allocated)".into())),
+            },
+            Some("on") => {
+                let (start, end) = match args {
+                    [_] => (0, 0x3FFF),
+                    [_, start, end] => (parse_addr(start)?, parse_addr(end)?),
+                    _ => return Err("usage: vtrace on [START END]".into()),
+                };
+                if start > end || end > 0x3FFF {
+                    return Err("vtrace filter must be a non-wrapping VRAM range within >0000->3FFF".into());
+                }
+                self.m.bus_mut().record_vdp_writes(start, end);
+                Ok(Reply::Text(format!(
+                    "vtrace on for VRAM >{start:04X}->{end:04X} (log restarted)"
+                )))
+            }
+            Some("off") => {
+                if args.len() != 1 {
+                    return Err("usage: vtrace off".into());
+                }
+                let count = self.m.bus().vdp_write_log().len();
+                self.m.bus_mut().stop_recording_vdp_writes();
+                Ok(Reply::Text(format!("vtrace off ({count} writes dropped)")))
+            }
+            Some("clear") => {
+                if args.len() != 1 {
+                    return Err("usage: vtrace clear".into());
+                }
+                self.m.bus_mut().clear_vdp_write_log();
+                Ok(Reply::Text("vtrace log cleared".into()))
+            }
+            Some("tail") => {
+                let n = match args {
+                    [_] => 32,
+                    [_, n] => parse_count(n, 1, 4096)?,
+                    _ => return Err("usage: vtrace tail [N]".into()),
+                };
+                let log = self.m.bus().vdp_write_log();
+                let tail = &log[log.len().saturating_sub(n)..];
+                if tail.is_empty() {
+                    return Ok(Reply::Text("vtrace log is empty (use 'vtrace on')".into()));
+                }
+                let mut out = format!("last {} of {} VDP writes:\n", tail.len(), log.len());
+                for event in tail {
+                    let _ = writeln!(out, "{}", format_vdp_write(event));
+                }
+                Ok(Reply::Text(out.trim_end().to_string()))
+            }
+            Some("save") => {
+                let path = rest
+                    .split_once(char::is_whitespace)
+                    .map(|(_, p)| p.trim_start())
+                    .unwrap_or("");
+                if path.is_empty() {
+                    return Err("usage: vtrace save FILE".into());
+                }
+                let log = self.m.bus().vdp_write_log();
+                let mut text = String::with_capacity(log.len() * 112);
+                for event in log {
+                    let _ = writeln!(text, "{}", format_vdp_write(event));
+                }
+                fs::write(path, text).map_err(|e| format!("could not write {path}: {e}"))?;
+                Ok(Reply::Text(format!("wrote {} VDP writes to {path}", log.len())))
+            }
+            Some(other) => Err(format!(
+                "unknown vtrace subcommand {other:?} — on [START END]|off|clear|show|tail [N]|save FILE"
+            )),
+        }
+    }
+
+    fn cmd_mtrace(&mut self, args: &[&str], rest: &str) -> Result<Reply, String> {
+        match args.first().copied() {
+            None | Some("show") => match self.m.bus().state_access_filters() {
+                Some(filters) => {
+                    let descriptions = filters
+                        .iter()
+                        .map(format_state_filter)
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    Ok(Reply::Text(format!(
+                        "mtrace on with {descriptions}; log holds {} accesses",
+                        self.m.bus().state_access_log().len()
+                    )))
+                }
+                None => Ok(Reply::Text("mtrace off (no log allocated)".into())),
+            },
+            Some("on") => {
+                let specs = &args[1..];
+                if specs.is_empty() || !specs.chunks_exact(4).remainder().is_empty() {
+                    return Err(
+                        "usage: mtrace on SPACE ACCESS START END [SPACE ACCESS START END ...]"
+                            .into(),
+                    );
+                }
+                let mut filters = Vec::with_capacity(specs.len() / 4);
+                for spec in specs.chunks_exact(4) {
+                    let space = parse_state_space(spec[0])?;
+                    let access = parse_state_access_filter(spec[1])?;
+                    let start = parse_addr(spec[2])?;
+                    let end = parse_addr(spec[3])?;
+                    if start > end {
+                        return Err("mtrace filters must be non-wrapping inclusive ranges".into());
+                    }
+                    match space {
+                        StateSpace::Cpu if !cpu_ram_range(start, end) => {
+                            return Err(
+                                "mtrace cpu filters must stay within writable RAM >2000->3FFF, >8000->83FF, or >A000->FFFF"
+                                    .into(),
+                            );
+                        }
+                        StateSpace::Vram if end > 0x3FFF => {
+                            return Err("mtrace vram filters must stay within >0000->3FFF".into());
+                        }
+                        StateSpace::Grom if access != StateAccessFilter::Read => {
+                            return Err("mtrace grom filters support read access only".into());
+                        }
+                        _ => {}
+                    }
+                    filters.push(StateFilter { space, access, start, end });
+                }
+                let descriptions = filters
+                    .iter()
+                    .map(format_state_filter)
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                self.m.bus_mut().record_state_accesses(filters);
+                Ok(Reply::Text(format!(
+                    "mtrace on with {descriptions} (log restarted)"
+                )))
+            }
+            Some("off") => {
+                if args.len() != 1 {
+                    return Err("usage: mtrace off".into());
+                }
+                let count = self.m.bus().state_access_log().len();
+                self.m.bus_mut().stop_recording_state_accesses();
+                Ok(Reply::Text(format!("mtrace off ({count} accesses dropped)")))
+            }
+            Some("clear") => {
+                if args.len() != 1 {
+                    return Err("usage: mtrace clear".into());
+                }
+                self.m.bus_mut().clear_state_access_log();
+                Ok(Reply::Text("mtrace log cleared".into()))
+            }
+            Some("tail") => {
+                let n = match args {
+                    [_] => 32,
+                    [_, n] => parse_count(n, 1, 4096)?,
+                    _ => return Err("usage: mtrace tail [N]".into()),
+                };
+                let log = self.m.bus().state_access_log();
+                let tail = &log[log.len().saturating_sub(n)..];
+                if tail.is_empty() {
+                    return Ok(Reply::Text("mtrace log is empty (use 'mtrace on')".into()));
+                }
+                let mut out = format!("last {} of {} state accesses:\n", tail.len(), log.len());
+                for event in tail {
+                    let _ = writeln!(out, "{}", format_state_access(event));
+                }
+                Ok(Reply::Text(out.trim_end().to_string()))
+            }
+            Some("save") => {
+                let path = rest
+                    .split_once(char::is_whitespace)
+                    .map(|(_, p)| p.trim_start())
+                    .unwrap_or("");
+                if path.is_empty() {
+                    return Err("usage: mtrace save FILE".into());
+                }
+                let log = self.m.bus().state_access_log();
+                let mut text = String::with_capacity(log.len() * 128);
+                for event in log {
+                    let _ = writeln!(text, "{}", format_state_access(event));
+                }
+                fs::write(path, text).map_err(|e| format!("could not write {path}: {e}"))?;
+                Ok(Reply::Text(format!("wrote {} state accesses to {path}", log.len())))
+            }
+            Some(other) => Err(format!(
+                "unknown mtrace subcommand {other:?} — on SPACE ACCESS START END [...]|off|clear|show|tail [N]|save FILE"
             )),
         }
     }
@@ -809,6 +1005,107 @@ fn parse_count(s: &str, lo: usize, hi: usize) -> Result<usize, String> {
     } else {
         Err(format!("count {n} out of range {lo}..{hi}"))
     }
+}
+
+fn parse_state_space(s: &str) -> Result<StateSpace, String> {
+    match s.to_ascii_lowercase().as_str() {
+        "cpu" => Ok(StateSpace::Cpu),
+        "vram" => Ok(StateSpace::Vram),
+        "grom" => Ok(StateSpace::Grom),
+        _ => Err(format!(
+            "bad mtrace space {s:?} (expected cpu, vram, or grom)"
+        )),
+    }
+}
+
+fn parse_state_access_filter(s: &str) -> Result<StateAccessFilter, String> {
+    match s.to_ascii_lowercase().as_str() {
+        "r" | "read" => Ok(StateAccessFilter::Read),
+        "w" | "write" => Ok(StateAccessFilter::Write),
+        "rw" | "readwrite" => Ok(StateAccessFilter::ReadWrite),
+        _ => Err(format!("bad mtrace access {s:?} (expected r, w, or rw)")),
+    }
+}
+
+fn cpu_ram_range(start: u16, end: u16) -> bool {
+    matches!(
+        (start, end),
+        (0x2000..=0x3FFF, 0x2000..=0x3FFF)
+            | (0x8000..=0x83FF, 0x8000..=0x83FF)
+            | (0xA000..=0xFFFF, 0xA000..=0xFFFF)
+    )
+}
+
+fn format_state_filter(filter: &StateFilter) -> String {
+    let space = match filter.space {
+        StateSpace::Cpu => "cpu",
+        StateSpace::Vram => "vram",
+        StateSpace::Grom => "grom",
+    };
+    let access = match filter.access {
+        StateAccessFilter::Read => "r",
+        StateAccessFilter::Write => "w",
+        StateAccessFilter::ReadWrite => "rw",
+    };
+    format!("{space}:{access}:>{:04X}-{:04X}", filter.start, filter.end)
+}
+
+fn format_state_access(event: &StateAccessProvenance) -> String {
+    let space = match event.space {
+        StateSpace::Cpu => "cpu",
+        StateSpace::Vram => "vram",
+        StateSpace::Grom => "grom",
+    };
+    let access = match event.access {
+        StateAccess::Read => "read",
+        StateAccess::Write => "write",
+    };
+    let frame = event.cycle / CYCLES_PER_FRAME;
+    let frame_cycle = event.cycle % CYCLES_PER_FRAME;
+    let mut text = format!(
+        "cycle={} frame={frame}+{frame_cycle} pc=>{:04X} opcode=>{:04X} r11=>{:04X} \
+         r9=>{:04X} grom=>{:04X} gbyte=>{:02X} space={space} access={access} addr=>{:04X}",
+        event.cycle,
+        event.pc,
+        event.opcode,
+        event.r11,
+        event.r9,
+        event.grom,
+        event.grom_byte,
+        event.address
+    );
+    if let Some(port) = event.port {
+        let _ = write!(text, " port=>{port:04X}");
+    }
+    if let Some(old_value) = event.old_value {
+        let _ = write!(text, " old=>{old_value:02X}");
+    }
+    let _ = write!(text, " byte=>{:02X}", event.value);
+    text
+}
+
+fn format_vdp_write(event: &VdpWriteProvenance) -> String {
+    let operation = match event.operation {
+        VdpPortOperation::WriteData => "write-data",
+    };
+    let frame = event.cycle / CYCLES_PER_FRAME;
+    let frame_cycle = event.cycle % CYCLES_PER_FRAME;
+    format!(
+        "cycle={} frame={frame}+{frame_cycle} pc=>{:04X} opcode=>{:04X} r11=>{:04X} \
+         r9=>{:04X} grom=>{:04X} gbyte=>{:02X} op={operation} port=>{:04X} \
+         vram=>{:04X} old=>{:02X} byte=>{:02X}",
+        event.cycle,
+        event.pc,
+        event.opcode,
+        event.r11,
+        event.r9,
+        event.grom,
+        event.grom_byte,
+        event.port,
+        event.address,
+        event.old_value,
+        event.value
+    )
 }
 
 fn parse_keys(args: &[&str]) -> Result<Vec<TiKey>, String> {
@@ -1059,6 +1356,13 @@ evidence
   trace on|off        record every GROM fetch (the GPL execution trace)
   trace tail [N]      show the last N fetches      trace summary   per-page counts
   trace save FILE     write the fetch log (one '>ADDR BYTE' per line)
+  vtrace on [LO HI]   record CPU-attributed VDP data writes (optional VRAM filter; includes GROM stream/R9)
+  vtrace [show]       status/count       vtrace tail [N]   show recent writes
+  vtrace save FILE    write provenance   vtrace clear|off  clear or disable it
+  mtrace on SPACE ACCESS LO HI [SPACE ACCESS LO HI ...]
+                      record filtered cpu/vram/grom state accesses (ACCESS r|w|rw)
+  mtrace [show]       status/count       mtrace tail [N]   show recent accesses
+  mtrace save FILE    write provenance   mtrace clear|off  clear or disable it
   cover on|off        record GROM-read + CPU-PC coverage bitmaps
   cover [summary]     coverage counts and range counts
   cover save FILE     write coverage as inclusive address ranges

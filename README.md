@@ -1,5 +1,10 @@
 # Libre99
 
+This repository publishes the `observatory-mvp` research branch built on
+[Joel Odom's Libre99](https://github.com/joelodom/libre99). The emulator,
+firmware, and core toolchain remain upstream work; the Observatory additions
+are kept as a separate, reviewable research layer.
+
 A cycle-aware **Texas Instruments TI-99/4A** home-computer emulator in pure
 Rust — together with the toolchain of a complete retro-computing platform: a
 from-scratch **TMS9900 assembler**, a **GPL toolchain**, an original
@@ -51,6 +56,75 @@ right, and the firmware does the rest.
   native file-chooser media mounting, save states (auto-save/resume + named
   snapshots), screenshots, pause/frame-advance/fast-forward, and a live CPU
   inspector — the overlays drawn by the app itself, no GUI toolkit.
+
+## Observatory research branch
+
+The `observatory-mvp` branch turns Libre99 into an evidence-producing
+environment for reconstructing TI-99/4A software. Its purpose is not to guess
+at original source. It closes a reproducible loop:
+
+`authentic execution → filtered causal evidence → structural recovery → neutral model → held-out replay → accepted atlas facts`
+
+Observation is optional and remains outside normal emulator behavior. Analysis
+runs after execution, and every accepted claim retains an evidence label and a
+direct path back to the experiment, recovered instruction, or primary source
+that supports it.
+
+### Demonstrated results
+
+| Investigation | Accepted result | Verification |
+|---|---|---|
+| Parsec frame attribution | All 34 changed VRAM bytes were attributed to their immediate native writers, including PC `>734C` / opcode `>D801` and PC `>7E76` / opcode `>D836`. | Repeated capture produced identical attribution, screenshot, save state, machine state, and write order. |
+| Runtime-informed GPL recovery | Trace-discovered entries and explicit inline-operand semantics prevent executed bytes from being silently misclassified. | The accepted five-page GROM recompiles byte-identically. |
+| Tunnels of Doom stairs transition | The accepted chain connects input scratchpad `>8375`, predicate cell VRAM `>1D00`, positive/negative GPL branches, transition mutation `>1CF8`, delayed copy to `>10FA`, and the visible `DESCENDING` effect. | Positive, negative, and predeclared held-out cases matched all 22 declared model fields. |
+| Per-floor candidate kernel | A neutral model reproduces the 538-byte payload at `>34B8..>36D1`, including random-state evolution and the direct retry contract. | Two accepted authoring cases and the predeclared held-out seed `>A5C3` matched every payload byte and the next seed. |
+| Payload consumers | Recovered consumers establish 17×26 geometry, stride 32, neutral byte classes, and cardinal connection masks. | The frozen comparison covered every distinct raw/class/mask tuple without contradiction; unvisited coordinate-specific meanings remain unresolved. |
+| Persistent evidence atlas | Append-only packages preserve facts, classifications, uncertainty, routines, state cells, effects, experiments, and their relationships. | Atlas validation rejects missing references and contradictory duplicate facts; compact queries need no bulk trace input. |
+
+### Source-package closure
+
+The same workflow produced a separate, tracked reconstruction package for the
+three logical *Tunnels of Doom* payloads. A source-only build—without access to
+the original cartridge or disk evidence—reproduces these identities:
+
+| Logical payload | Bytes | SHA-256 |
+|---|---:|---|
+| Cartridge GROM | 40,960 | `3eb52ac2415744bc69aa61c55704738eb3d0305fc5838a283403ac8f8cd40514` |
+| QUEST | 13,056 | `d4fcf8e1335597f78b44bfb88af0848cc7212c33df97796c056b7e3097a682cc` |
+| PENNIES | 13,056 | `c1ccde713a7fb6caf746cd15e617ccbb366ea7cc72488d8dbc4025e4e2148bb0` |
+
+One bounded integration run used those generated payloads as the actual
+Libre99 inputs and reached the established `NEW DUNGEON` post-load menu at
+frame 1,410. This proves source-package closure and runtime compatibility; it
+does not claim recovery of the author's original symbols, comments, or
+high-level design.
+
+The reconstructed commercial payloads are not distributed from this
+repository. Original media, rebuilt binaries, decompilations, traces,
+checkpoints, save states, and new experiment screenshots remain outside Git.
+
+### Query the accepted evidence
+
+The public atlas provides a compact, no-context entry point:
+
+```bash
+python3 tools/observatory_atlas.py validate
+python3 tools/observatory_atlas.py list
+python3 tools/observatory_atlas.py query tod.stairs-descend
+python3 tools/observatory_atlas.py query tod.floor-kernel-model
+python3 tools/observatory_atlas.py query tod.payload-semantics
+```
+
+Claims are classified as `source-confirmed`, `observed`, `corroborated`,
+`inferred`, or `unresolved`. Neither Libre99 nor another emulator is treated as
+an automatic oracle. Exact gameplay names, stocking and content generation,
+rendering, broader inter-floor contracts, and a complete generator remain
+outside the accepted result.
+
+Start with [START-HERE.md](START-HERE.md), then read
+[the observatory MVP](docs/OBSERVATORY-MVP.md),
+[the reconstruction sequence](docs/RECONSTRUCTION-NEXT.md), and
+[the persistent atlas](docs/ATLAS.md).
 
 ## Screenshots
 
@@ -126,7 +200,6 @@ cargo run --release -p libre99-app -- --system-rom path/to/994aROM.Bin --system-
 | `crates/libre99-core` | The emulator core: every chip, the console bus, save states. Pure `std`, **zero third-party dependencies**, `#![forbid(unsafe_code)]`. | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
 | `crates/libre99-app` | The desktop app: window, audio, input, overlays, media mounting, config, logging. | [docs/USER-GUIDE.md](docs/USER-GUIDE.md) |
 | `crates/libre99-asm` | `libre99asm` — a complete two-pass TMS9900 assembler + `.ctg` cartridge packager + disassembler. | [docs/ASSEMBLER.md](docs/ASSEMBLER.md) |
-| `crates/libre99-gpl` | `libre99gpl` — GPL (Graphics Programming Language) assembler/disassembler and the console-GROM build + verification harness. | [original-content/system-roms/grom/README.md](original-content/system-roms/grom/README.md) |
 | `crates/libre99-gsl` | `libre99gsl` — **GSL**, a high-level language over GPL: a compiler (GSL → `.ctg`/GROM image via the GPL assembler) and a self-verifying decompiler (real cartridges → GSL, byte-identical on recompile). | [docs/GSL.md](docs/GSL.md) |
 | `crates/libre99-probe` | `libre99probe` — the **headless probe shell**: a scriptable line-command control surface over the emulated console (run frames, press keys, read the screen as text, trace/coverage, save states) for humans and AI agents alike. | [docs/PROBE.md](docs/PROBE.md) |
 | `original-content/system-roms` | The clean-room console ROM + GROM rewrite (Libre99): original firmware, differentially verified, booted by default. | [original-content/system-roms/README.md](original-content/system-roms/README.md) |

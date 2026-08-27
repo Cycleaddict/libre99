@@ -1,0 +1,299 @@
+{
+  "atlas_version": 1,
+  "package": "tod-stairs-fallback",
+  "title": "Tunnels of Doom stairs message acknowledgement fallback",
+  "summary": "Append-only G-007 package for the source-decoded >8018/>96EA acknowledgement contract and its one frozen authentic comparison. It stores no commercial bytes or owner-local paths.",
+  "seeded_from": "docs/TOD-STAIRS-FALLBACK.md and logical owner-local evidence identities",
+  "evidence": [
+    {
+      "id": "ev.doc.tod-stairs-fallback",
+      "kind": "tracked-document",
+      "ref": "docs/TOD-STAIRS-FALLBACK.md",
+      "detail": "source-addressed condition, input, backdrop, return, caller-convention, frozen-prediction, and authentic-result report"
+    },
+    {
+      "id": "ev.tool.tod-stairs-model-v2",
+      "kind": "tracked-document",
+      "ref": "tools/tod_stairs_model.py",
+      "detail": "bounded stairs model with concrete acknowledgement state/input contract"
+    },
+    {
+      "id": "ev.primary.gpl-return-scan",
+      "kind": "primary-documentation",
+      "ref": "original-content/system-roms/rom/console.asm",
+      "detail": "ordinary GPL RTN clears condition while RTNC preserves it; accepted SCAN contract sets condition only for a newly detected key"
+    },
+    {
+      "id": "ev.exp.g007-stairs-fallback",
+      "kind": "owner-local-experiment",
+      "ref": "tod-mvp/stairs-fallback-2026-08-27",
+      "detail": "one frozen checkpoint case; only >1CF8 changed from >00 to >01 before the established stairs input and one acknowledgement key",
+      "counts": {"runs": 1, "grom_fetches": 10409, "ack_entry_fetches": 382, "vdp_writes": 424, "state_accesses": 1522}
+    }
+  ],
+  "entities": [
+    {
+      "id": "tod.stairs-fallback",
+      "kind": "subsystem",
+      "name": "stairs message acknowledgement fallback",
+      "order": 0,
+      "detail": "bounded >8018 tail trampoline and >96EA..>9710 input/backdrop/return contract"
+    },
+    {
+      "id": "tod.experiment.g007-stairs-fallback",
+      "kind": "experiment",
+      "name": "frozen stairs fallback acknowledgement comparison",
+      "subsystem": "tod.stairs-fallback",
+      "order": 10
+    },
+    {
+      "id": "tod.op.gpl-66C5",
+      "kind": "operation",
+      "name": "GPL post-acknowledgement condition branch",
+      "subsystem": "tod.stairs-fallback",
+      "order": 20,
+      "address": ">66C5",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.op.gpl-96EA",
+      "kind": "routine",
+      "name": "GPL acknowledgement routine",
+      "subsystem": "tod.stairs-fallback",
+      "order": 21,
+      "address": ">96EA",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.op.gpl-96F3",
+      "kind": "operation",
+      "name": "GPL waiting-backdrop selection",
+      "subsystem": "tod.stairs-fallback",
+      "order": 22,
+      "address": ">96F3",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.op.gpl-96FF",
+      "kind": "operation",
+      "name": "GPL SCAN wait",
+      "subsystem": "tod.stairs-fallback",
+      "order": 23,
+      "address": ">96FF",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.op.gpl-9710",
+      "kind": "operation",
+      "name": "GPL ordinary return after acknowledgement",
+      "subsystem": "tod.stairs-fallback",
+      "order": 24,
+      "address": ">9710",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.state.scratchpad-83A1",
+      "kind": "state-cell",
+      "name": "scratchpad byte >83A1",
+      "subsystem": "tod.stairs-fallback",
+      "order": 30,
+      "address": ">83A1",
+      "space": "scratchpad"
+    },
+    {
+      "id": "tod.state.scratchpad-8379",
+      "kind": "state-cell",
+      "name": "vdp_timer byte",
+      "subsystem": "tod.stairs-fallback",
+      "order": 31,
+      "address": ">8379",
+      "space": "scratchpad"
+    },
+    {
+      "id": "tod.state.vram-1D01",
+      "kind": "state-cell",
+      "name": "VRAM byte >1D01",
+      "subsystem": "tod.stairs-fallback",
+      "order": 32,
+      "address": ">1D01",
+      "space": "vram"
+    },
+    {
+      "id": "tod.effect.stairs-message-ack",
+      "kind": "effect",
+      "name": "message >2D acknowledgement and backdrop sequence",
+      "subsystem": "tod.stairs-fallback",
+      "order": 40
+    }
+  ],
+  "facts": [
+    {
+      "id": "fact.stairs-fallback.message-return",
+      "subject": "tod.op.gpl-8018",
+      "predicate": "incoming-condition",
+      "value": "message >2D returns through ordinary RTN with condition reset; >8018 is BR-on-reset to >96EA and has no independent RTN arm",
+      "classification": "source-confirmed",
+      "evidence": ["ev.primary.gpl-return-scan", "ev.doc.tod-stairs-fallback"]
+    },
+    {
+      "id": "fact.stairs-fallback.callers",
+      "subject": "tod.op.gpl-8018",
+      "predicate": "static-callers",
+      "value": "14 CALL sites (>66C2, >69BD, >6A70, >6B24, >6B35, >6C3A, >6C8A, >6F4D, >7707, >77A0, >C3D3, >C48F, >C4CA, >C659) share reset-condition entry provenance",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.tod-stairs-fallback"]
+    },
+    {
+      "id": "fact.stairs-fallback.83a1",
+      "subject": "tod.state.scratchpad-83A1",
+      "predicate": "routine-contract",
+      "value": "nonzero is cleared and >96EA returns immediately without SCAN or backdrop writes; zero enters the timer/backdrop/SCAN wait",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.tod-stairs-fallback"]
+    },
+    {
+      "id": "fact.stairs-fallback.timer",
+      "subject": "tod.state.scratchpad-8379",
+      "predicate": "waiting-backdrop",
+      "value": "each wait iteration writes backdrop >0C when bit >40 is set, otherwise >02",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.tod-stairs-fallback"]
+    },
+    {
+      "id": "fact.stairs-fallback.1d01",
+      "subject": "tod.state.vram-1D01",
+      "predicate": "final-backdrop",
+      "value": "after a newly detected key, value >02 selects backdrop >06; every other value selects >03",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.tod-stairs-fallback"]
+    },
+    {
+      "id": "fact.stairs-fallback.return",
+      "subject": "tod.op.gpl-9710",
+      "predicate": "outgoing-condition",
+      "value": "ordinary RTN clears condition; original caller resumes at >66C5 and branches to >663F",
+      "classification": "source-confirmed",
+      "evidence": ["ev.primary.gpl-return-scan", "ev.doc.tod-stairs-fallback"]
+    },
+    {
+      "id": "fact.stairs-fallback.freeze",
+      "subject": "tod.experiment.g007-stairs-fallback",
+      "predicate": "frozen-prediction",
+      "value": "SHA-256 c46c7972e2e5d3596fd2a3660a13e9ad88b86da35a6ef88dd77d4598f9411200; mutate only >1CF8 >00->>01; expect >8018 -> >96EA wait -> >9710 -> >66C5 -> >663F with no >1CF8/>1D00 mutation",
+      "classification": "observed",
+      "evidence": ["ev.exp.g007-stairs-fallback", "ev.doc.tod-stairs-fallback"]
+    },
+    {
+      "id": "fact.stairs-fallback.authentic",
+      "subject": "tod.experiment.g007-stairs-fallback",
+      "predicate": "exact-result",
+      "value": "PASS: >66AE >66B5 message >2D >8018; 382 >96EA entries; release produced no-key >FF; space produced new key >20; >1D01=>01 selected BACK >03; >9710 >66C5 >663F; >1CF8 remained >01 and >1D00 remained >06; >66C7 was not fetched",
+      "classification": "observed",
+      "evidence": ["ev.exp.g007-stairs-fallback", "ev.doc.tod-stairs-fallback"]
+    },
+    {
+      "id": "fact.stairs-fallback.model-v2",
+      "subject": "tod.model.stairs-descend",
+      "predicate": "fallback-input-contract",
+      "value": "model version 2 removes continuation_allowed and accepts concrete >83A1, vdp_timer, >1D01, and optional newly detected SCAN key; only the no-new-key wait remains a refusal",
+      "classification": "source-confirmed",
+      "evidence": ["ev.tool.tod-stairs-model-v2", "ev.doc.tod-stairs-fallback"]
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "hyp.stairs-fallback.ui-semantics",
+      "subject": "tod.stairs-fallback",
+      "statement": "the exact user-facing meanings of message >2D and backdrop values >02/>03/>06/>0C, and the game-level meanings of the address-named cells, remain unresolved",
+      "classification": "unresolved",
+      "evidence": ["ev.doc.tod-stairs-fallback"]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel.stairs-fallback.part-of-stairs",
+      "order": 1,
+      "from": "tod.stairs-fallback",
+      "kind": "part-of",
+      "to": "tod.stairs-descend",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.tod-stairs-fallback"]
+    },
+    {
+      "id": "rel.stairs-fallback.8018-to-96ea",
+      "order": 10,
+      "from": "tod.op.gpl-8018",
+      "kind": "branches-to",
+      "to": "tod.op.gpl-96EA",
+      "classification": "observed",
+      "detail": "incoming condition was reset by message >2D",
+      "evidence": ["ev.exp.g007-stairs-fallback", "ev.doc.tod-stairs-fallback"]
+    },
+    {
+      "id": "rel.stairs-fallback.96ea-reads-83a1",
+      "order": 11,
+      "from": "tod.op.gpl-96EA",
+      "kind": "reads",
+      "to": "tod.state.scratchpad-83A1",
+      "classification": "observed",
+      "evidence": ["ev.exp.g007-stairs-fallback"]
+    },
+    {
+      "id": "rel.stairs-fallback.96f3-reads-timer",
+      "order": 12,
+      "from": "tod.op.gpl-96F3",
+      "kind": "reads",
+      "to": "tod.state.scratchpad-8379",
+      "classification": "observed",
+      "evidence": ["ev.exp.g007-stairs-fallback"]
+    },
+    {
+      "id": "rel.stairs-fallback.96ff-precedes-effect",
+      "order": 13,
+      "from": "tod.op.gpl-96FF",
+      "kind": "precedes",
+      "to": "tod.effect.stairs-message-ack",
+      "classification": "observed",
+      "detail": "SCAN accepted new key >20 after release/no-key",
+      "evidence": ["ev.exp.g007-stairs-fallback"]
+    },
+    {
+      "id": "rel.stairs-fallback.96ea-reads-1d01",
+      "order": 14,
+      "from": "tod.op.gpl-96EA",
+      "kind": "reads",
+      "to": "tod.state.vram-1D01",
+      "classification": "observed",
+      "detail": ">1D01 was >01 and selected final backdrop >03",
+      "evidence": ["ev.exp.g007-stairs-fallback"]
+    },
+    {
+      "id": "rel.stairs-fallback.9710-to-66c5",
+      "order": 15,
+      "from": "tod.op.gpl-9710",
+      "kind": "continues-to",
+      "to": "tod.op.gpl-66C5",
+      "classification": "observed",
+      "detail": "ordinary return reset condition",
+      "evidence": ["ev.exp.g007-stairs-fallback", "ev.doc.tod-stairs-fallback"]
+    },
+    {
+      "id": "rel.stairs-fallback.66c5-to-663f",
+      "order": 16,
+      "from": "tod.op.gpl-66C5",
+      "kind": "branches-to",
+      "to": "tod.op.gpl-663F",
+      "classification": "observed",
+      "detail": "the reset return condition rejected the stairs fallback without state mutation",
+      "evidence": ["ev.exp.g007-stairs-fallback"]
+    }
+  ],
+  "queries": [
+    {
+      "id": "q.tod.stairs-fallback",
+      "subsystem": "tod.stairs-fallback",
+      "question": "What is the exact >8018/>96EA stairs fallback contract, and does it decide stairs acceptance?",
+      "answer": ">8018 is a BR-on-condition-reset tail trampoline into the shared >96EA acknowledgement routine, not a game-state predicate. Message >2D returns reset, so the stairs call enters >96EA. Nonzero >83A1 is cleared and returns immediately; zero selects waiting backdrop >0C/>02 from vdp_timer bit >40 and loops SCAN until a new key. VRAM >1D01 then selects final backdrop >06 when equal to >02, otherwise >03. Ordinary RTN at >9710 clears condition, so >66C5 branches to >663F without changing >1CF8 or >1D00. One frozen authentic case matched >8018 -> >96EA -> >9710 -> >66C5 -> >663F, new key >20, final backdrop >03, and no stairs mutation. Model v2 removes the guessed continuation_allowed Boolean; only absent new input remains an explicit wait/refusal."
+    }
+  ]
+}

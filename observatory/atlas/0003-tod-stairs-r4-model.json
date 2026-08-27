@@ -1,0 +1,457 @@
+{
+  "atlas_version": 1,
+  "package": "tod-stairs-r4-model",
+  "title": "Tunnels of Doom stairs-descend: the executable behavioral model (R4)",
+  "summary": "Appended package. It adds the R4 executable model, static control-flow facts from the byte-verified owner-local GSL decode, three previously unnamed operations (>66E5, >66B3, >8018), the frozen experiment matrix, and the accepted model-versus-authentic comparison. The additional held-out >1CE8=00 case followed the predicted >66B3 bypass without reading >10FE and reproduced the accepted mutations, delayed copy, and DESCENDING effect deterministically. It rewrites nothing in the accepted R1-R3 packages.",
+  "seeded_from": "docs/TOD-STAIRS-MODEL.md and the byte-verified owner-local GSL decode of the matching cartridge bytes at >669B..>66E5 and >A798",
+  "evidence": [
+    {
+      "id": "ev.doc.tod-stairs-model",
+      "kind": "tracked-document",
+      "ref": "docs/TOD-STAIRS-MODEL.md",
+      "detail": "R4 model specification: boundary, neutral data layout, exact pseudocode, interpreter metadata, declared matrix, comparison file format, and retained uncertainty"
+    },
+    {
+      "id": "ev.tool.tod-stairs-model",
+      "kind": "tracked-document",
+      "ref": "tools/tod_stairs_model.py",
+      "detail": "the executable model itself, with its predict/compare commands; tools/test_tod_stairs_model.py is its focused suite"
+    },
+    {
+      "id": "ev.static.gsl-decode-stairs",
+      "kind": "owner-local-experiment",
+      "ref": "tod-mvp/gsl-decode-stairs-669B-66E5-A798",
+      "detail": "byte-verified owner-local GSL decode of the matching cartridge bytes at >669B..>66E5 and >A798; referenced logically — no bytes, listing, decompilation, or path is stored here"
+    },
+    {
+      "id": "ev.exp.r4-heldout-secondary-bypass",
+      "kind": "owner-local-experiment",
+      "ref": "tod-mvp/r4-heldout-secondary-bypass",
+      "detail": "two fresh authentic runs from the accepted spawn checkpoint with only >1CE8 changed to 00 before FCTN+X; compact filtered captures remain owner-local"
+    },
+    {
+      "id": "ev.exp.r4-model-comparison",
+      "kind": "owner-local-experiment",
+      "ref": "tod-mvp/r4-model-comparison",
+      "detail": "versioned comparison of the frozen model against accepted positive, accepted negative, and new held-out observations: 22 of 22 declared in-boundary fields matched; no case data or artifact path is tracked"
+    }
+  ],
+  "entities": [
+    {
+      "id": "tod.model.stairs-descend",
+      "kind": "routine",
+      "name": "executable behavioral model of the stairs-descend decision",
+      "subsystem": "tod.stairs-descend",
+      "order": 14,
+      "detail": "tools/tod_stairs_model.py: predicts the GPL decision at >669B, the immediate mutations at >66C7/>66CB, the separately applied delayed copy at >A798, and the DESCENDING classification. It is a reconstruction, not an emulator or GPL runtime; the callees, renderer, map, party, combat, and timing are outside it."
+    },
+    {
+      "id": "tod.experiment.heldout-secondary-bypass",
+      "kind": "experiment",
+      "name": "held-out secondary-flag bypass experiment",
+      "subsystem": "tod.stairs-descend",
+      "order": 3,
+      "detail": "fresh spawn checkpoint; before input only VRAM >1CE8 is set from 01 to 00, then `hold fctn x`; run twice from fresh probe processes and required to produce identical filtered evidence and in-boundary results"
+    },
+    {
+      "id": "tod.op.gpl-66E5",
+      "kind": "operation",
+      "name": "GPL input-rejection continuation target",
+      "subsystem": "tod.stairs-descend",
+      "order": 35,
+      "address": ">66E5",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.op.gpl-66B3",
+      "kind": "operation",
+      "name": "GPL secondary-flag bypass branch to the accepted target",
+      "subsystem": "tod.stairs-descend",
+      "order": 36,
+      "address": ">66B3",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.op.gpl-8018",
+      "kind": "operation",
+      "name": "GPL external-condition subroutine called on the fallback path",
+      "subsystem": "tod.stairs-descend",
+      "order": 37,
+      "address": ">8018",
+      "space": "cartridge-grom",
+      "detail": "reached only when unsigned >10FE < >1CF8, after message >2D; the callee's predicate is not recovered"
+    }
+  ],
+  "facts": [
+    {
+      "id": "fact.static.669B-input-branch",
+      "subject": "tod.op.gpl-669B",
+      "predicate": "static-branch-on-mismatch",
+      "value": "a key byte other than 0A leaves the routine at >66E5",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.gsl-decode-stairs", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "fact.static.66A0-decode",
+      "subject": "tod.op.gpl-66A0",
+      "predicate": "static-decode",
+      "value": "accepts 04 and skips the second comparison; every other value falls through to >66A7",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.gsl-decode-stairs", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "fact.static.66A7-decode",
+      "subject": "tod.op.gpl-66A7",
+      "predicate": "static-decode",
+      "value": "requires 06; any other value reaches the branch bytes at >66AC and continues at >663F",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.gsl-decode-stairs", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "fact.static.66AE-decode",
+      "subject": "tod.op.gpl-66AE",
+      "predicate": "static-decode",
+      "value": "compares >1CE8 with 01; a value other than 01 takes the >66B3 bypass to >66C7 without reading >10FE",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.gsl-decode-stairs", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "fact.static.66B5-comparison-sense",
+      "subject": "tod.op.gpl-66B5",
+      "predicate": "static-comparison-sense",
+      "value": "unsigned >10FE >= >1CF8 continues to >66C7; the lower case issues message >2D and calls >8018",
+      "classification": "source-confirmed",
+      "note": "unsigned: >80 against >7F continues, where a signed reading would take the fallback",
+      "evidence": ["ev.static.gsl-decode-stairs", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "fact.static.66C7-mutation",
+      "subject": "tod.op.gpl-66C7",
+      "predicate": "static-mutation",
+      "value": ">1CF8 increments within a byte; >FF wraps to >00",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.gsl-decode-stairs", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "fact.static.66CB-mutation",
+      "subject": "tod.op.gpl-66CB",
+      "predicate": "static-mutation",
+      "value": "stores the immediate byte 05 into >1D00",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.gsl-decode-stairs", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "fact.static.A798-mutation",
+      "subject": "tod.op.gpl-A798",
+      "predicate": "static-mutation",
+      "value": "copies >1CF8 into >10FA",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.gsl-decode-stairs", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "fact.static.66E5-role",
+      "subject": "tod.op.gpl-66E5",
+      "predicate": "role",
+      "value": "the continuation target of the input rejection at >669B; no in-boundary state is written on that path",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.gsl-decode-stairs", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "fact.static.66B3-role",
+      "subject": "tod.op.gpl-66B3",
+      "predicate": "role",
+      "value": "the branch that reaches the accepted target >66C7 when >1CE8 is not 01",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.gsl-decode-stairs", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "fact.static.8018-call-site",
+      "subject": "tod.op.gpl-8018",
+      "predicate": "call-site",
+      "value": "called after message >2D when unsigned >10FE < >1CF8",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.gsl-decode-stairs", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "fact.model.boundary",
+      "subject": "tod.model.stairs-descend",
+      "predicate": "boundary",
+      "value": "the GPL decision at >669B, the immediate mutations at >66C7/>66CB, the separately applied copy at >A798, the native access boundary as metadata, and the DESCENDING classification; callees, renderer, map, party, combat, and timing are excluded",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.tod-stairs-model", "ev.tool.tod-stairs-model"]
+    },
+    {
+      "id": "fact.model.inputs",
+      "subject": "tod.model.stairs-descend",
+      "predicate": "inputs",
+      "value": "six range-checked 0..255 bytes named key_code, vram_1d00, vram_1ce8, vram_10fe, vram_1cf8, and vram_10fa, plus the explicit optional continuation_allowed",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.tod-stairs-model", "ev.tool.tod-stairs-model"]
+    },
+    {
+      "id": "fact.model.outputs",
+      "subject": "tod.model.stairs-descend",
+      "predicate": "outputs",
+      "value": "a deterministic structured result with status, reason, branch, before state, immediate state, optional delayed state, visible effect, and the bounded GPL and native operations used",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.tod-stairs-model", "ev.tool.tod-stairs-model"]
+    },
+    {
+      "id": "fact.model.delayed-phase",
+      "subject": "tod.model.stairs-descend",
+      "predicate": "delayed-phase",
+      "value": "the copy at >A798 is a separate command-visible operation that requires an accepted pending result and assigns vram_10fa = vram_1cf8",
+      "classification": "source-confirmed",
+      "note": "the eight-frame gap observed between >66CB and >A798 is not scheduled by the model",
+      "evidence": ["ev.doc.tod-stairs-model", "ev.tool.tod-stairs-model"]
+    },
+    {
+      "id": "fact.model.external-condition-discipline",
+      "subject": "tod.model.stairs-descend",
+      "predicate": "external-condition-discipline",
+      "value": "on the >8018 path a missing continuation_allowed returns unresolved; the model never guesses the callee",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.tod-stairs-model", "ev.tool.tod-stairs-model"]
+    },
+    {
+      "id": "fact.model.native-boundary",
+      "subject": "tod.model.stairs-descend",
+      "predicate": "native-boundary",
+      "value": ">08B0/>D013, >08CE/>D020, and >1D2A/>D802 are reported as metadata and are not emulated",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.tod-stairs-model", "ev.tool.tod-stairs-model"]
+    },
+    {
+      "id": "fact.model.comparison-command",
+      "subject": "tod.model.stairs-descend",
+      "predicate": "comparison-command",
+      "value": "`compare FILE` evaluates a versioned owner-local case list of model inputs and independently observed in-boundary outputs, prints deterministic PASS/FAIL per field and a summary, and exits nonzero on mismatch or invalid input",
+      "classification": "source-confirmed",
+      "note": "the case list stays owner-local; the atlas records the command and format, not the cases",
+      "evidence": ["ev.doc.tod-stairs-model", "ev.tool.tod-stairs-model"]
+    },
+    {
+      "id": "fact.heldout.setup",
+      "subject": "tod.experiment.heldout-secondary-bypass",
+      "predicate": "setup",
+      "value": "fresh spawn checkpoint; before input only VRAM >1CE8 is set from 01 to 00; then `hold fctn x`; run twice from fresh probe processes",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "fact.heldout.authoring-discipline",
+      "subject": "tod.experiment.heldout-secondary-bypass",
+      "predicate": "authoring-discipline",
+      "value": "declared and predicted before execution and not used to author or revise the model; the separately labeled observed result was appended after execution",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "fact.heldout.observed-path",
+      "subject": "tod.experiment.heldout-secondary-bypass",
+      "predicate": "observed-path",
+      "value": ">66AE read >1CE8=00, >66B3 bypassed to >66C7 without a >10FE read, >1CF8 changed 00 to 01, >1D00 changed 06 to 05, >A798 later copied 01 to >10FA, and DESCENDING was visible",
+      "classification": "observed",
+      "evidence": ["ev.exp.r4-heldout-secondary-bypass", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "fact.heldout.deterministic",
+      "subject": "tod.experiment.heldout-secondary-bypass",
+      "predicate": "determinism",
+      "value": "two fresh probe processes produced byte-identical 91-record filtered state captures and byte-identical 684-record name-table VDP captures",
+      "classification": "observed",
+      "evidence": ["ev.exp.r4-heldout-secondary-bypass", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "fact.model.authentic-matrix",
+      "subject": "tod.model.stairs-descend",
+      "predicate": "authentic-comparison",
+      "value": "accepted positive, rejected negative, and predeclared >1CE8=00 held-out cases matched all 22 compared in-boundary fields",
+      "classification": "observed",
+      "evidence": ["ev.exp.r4-model-comparison", "ev.exp.r4-heldout-secondary-bypass", "ev.doc.tod-stairs-model", "ev.tool.tod-stairs-model"]
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "hyp.model.prediction-accepted-positive",
+      "subject": "tod.model.stairs-descend",
+      "statement": "frozen prediction for the accepted-positive case (key=0A, 1D00=06, 1CE8=01, 10FE=00, 1CF8=00, 10FA=00): accept at >66C7, >1CF8 00→01, >1D00 06→05, delayed >10FA 00→01, DESCENDING",
+      "classification": "inferred",
+      "resolves_when": "resolved by fact.model.authentic-matrix; retained as the frozen pre-execution prediction",
+      "evidence": ["ev.doc.tod-stairs-model", "ev.tool.tod-stairs-model"]
+    },
+    {
+      "id": "hyp.model.prediction-rejected-negative",
+      "subject": "tod.model.stairs-descend",
+      "statement": "frozen prediction for the rejected-negative case (key=0A, 1D00=05, 1CF8=01): reject at >663F, no in-boundary mutation, no DESCENDING",
+      "classification": "inferred",
+      "resolves_when": "resolved by fact.model.authentic-matrix; retained as the frozen pre-execution prediction",
+      "evidence": ["ev.doc.tod-stairs-model", "ev.tool.tod-stairs-model"]
+    },
+    {
+      "id": "hyp.heldout.prediction-secondary-bypass",
+      "subject": "tod.experiment.heldout-secondary-bypass",
+      "statement": "frozen prediction, recorded before execution: accept through the >66B3 bypass to >66C7 without reading >10FE, >1CF8 00→01, >1D00 06→05, delayed >10FA 00→01, DESCENDING, identical across two fresh probe processes",
+      "classification": "inferred",
+      "resolves_when": "resolved by fact.heldout.observed-path and fact.model.authentic-matrix; retained as the frozen pre-execution prediction",
+      "evidence": ["ev.doc.tod-stairs-model", "ev.tool.tod-stairs-model"]
+    },
+    {
+      "id": "hyp.op.8018-predicate",
+      "subject": "tod.op.gpl-8018",
+      "statement": "the callee's predicate is not recovered; the model requires the caller to state the external condition explicitly on this path instead of assuming one",
+      "classification": "unresolved",
+      "alternatives": [
+        "a prompt answered outside this routine",
+        "a state test inside the callee",
+        "an unconditional continuation"
+      ],
+      "resolves_when": "a bounded experiment reaches the unsigned >10FE < >1CF8 fallback and observes the outcome, or the callee is decoded and byte-verified",
+      "evidence": ["ev.static.gsl-decode-stairs", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "hyp.model.neutral-names",
+      "subject": "tod.model.stairs-descend",
+      "statement": "the model's field names mirror addresses because >1D00, >1CE8, >10FE, >1CF8, and >10FA have no confirmed game-level meaning; the reconstruction retains that uncertainty rather than naming them",
+      "classification": "unresolved",
+      "evidence": ["ev.doc.tod-stairs-model", "ev.tool.tod-stairs-model"]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel.669B.branches-66E5",
+      "order": 70,
+      "from": "tod.op.gpl-669B",
+      "kind": "branches-to",
+      "to": "tod.op.gpl-66E5",
+      "classification": "source-confirmed",
+      "detail": "the key byte is not 0A",
+      "evidence": ["ev.static.gsl-decode-stairs", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "rel.66AE.branches-66B3",
+      "order": 71,
+      "from": "tod.op.gpl-66AE",
+      "kind": "branches-to",
+      "to": "tod.op.gpl-66B3",
+      "classification": "source-confirmed",
+      "detail": ">1CE8 is not 01",
+      "evidence": ["ev.static.gsl-decode-stairs", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "rel.66B3.continues-66C7",
+      "order": 72,
+      "from": "tod.op.gpl-66B3",
+      "kind": "continues-to",
+      "to": "tod.op.gpl-66C7",
+      "classification": "source-confirmed",
+      "detail": "the bypass reaches the accepted target without reading >10FE",
+      "evidence": ["ev.static.gsl-decode-stairs", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "rel.66B5.continues-66C7",
+      "order": 73,
+      "from": "tod.op.gpl-66B5",
+      "kind": "continues-to",
+      "to": "tod.op.gpl-66C7",
+      "classification": "source-confirmed",
+      "detail": "unsigned >10FE >= >1CF8",
+      "evidence": ["ev.static.gsl-decode-stairs", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "rel.66B5.branches-8018",
+      "order": 74,
+      "from": "tod.op.gpl-66B5",
+      "kind": "branches-to",
+      "to": "tod.op.gpl-8018",
+      "classification": "source-confirmed",
+      "detail": "unsigned >10FE < >1CF8; message >2D is issued first",
+      "evidence": ["ev.static.gsl-decode-stairs", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "rel.8018.continues-66C7",
+      "order": 75,
+      "from": "tod.op.gpl-8018",
+      "kind": "continues-to",
+      "to": "tod.op.gpl-66C7",
+      "classification": "unresolved",
+      "detail": "only when the unrecovered callee condition allows continuation",
+      "evidence": ["ev.static.gsl-decode-stairs", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "rel.8018.branches-663F",
+      "order": 76,
+      "from": "tod.op.gpl-8018",
+      "kind": "branches-to",
+      "to": "tod.op.gpl-663F",
+      "classification": "unresolved",
+      "detail": "when the unrecovered callee condition refuses continuation",
+      "evidence": ["ev.static.gsl-decode-stairs", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "rel.heldout.66AE-branches-66B3",
+      "order": 77,
+      "from": "tod.op.gpl-66AE",
+      "kind": "branches-to",
+      "to": "tod.op.gpl-66B3",
+      "context": "tod.experiment.heldout-secondary-bypass",
+      "classification": "observed",
+      "detail": ">1CE8 was 00; the path did not read >10FE",
+      "evidence": ["ev.exp.r4-heldout-secondary-bypass", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "rel.heldout.66B3-continues-66C7",
+      "order": 78,
+      "from": "tod.op.gpl-66B3",
+      "kind": "continues-to",
+      "to": "tod.op.gpl-66C7",
+      "context": "tod.experiment.heldout-secondary-bypass",
+      "classification": "observed",
+      "evidence": ["ev.exp.r4-heldout-secondary-bypass", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "rel.heldout.66C7-writes-1CF8",
+      "order": 79,
+      "from": "tod.op.gpl-66C7",
+      "kind": "writes",
+      "to": "tod.state.vram-1CF8",
+      "context": "tod.experiment.heldout-secondary-bypass",
+      "classification": "observed",
+      "detail": "00→01",
+      "evidence": ["ev.exp.r4-heldout-secondary-bypass", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "rel.heldout.66CB-writes-1D00",
+      "order": 80,
+      "from": "tod.op.gpl-66CB",
+      "kind": "writes",
+      "to": "tod.state.vram-1D00",
+      "context": "tod.experiment.heldout-secondary-bypass",
+      "classification": "observed",
+      "detail": "06→05",
+      "evidence": ["ev.exp.r4-heldout-secondary-bypass", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "rel.heldout.A798-writes-10FA",
+      "order": 81,
+      "from": "tod.op.gpl-A798",
+      "kind": "writes",
+      "to": "tod.state.vram-10FA",
+      "context": "tod.experiment.heldout-secondary-bypass",
+      "classification": "observed",
+      "detail": "00→01, eight frames after the immediate writes",
+      "evidence": ["ev.exp.r4-heldout-secondary-bypass", "ev.doc.tod-stairs-model"]
+    },
+    {
+      "id": "rel.heldout.66C7-precedes-descending",
+      "order": 82,
+      "from": "tod.op.gpl-66C7",
+      "kind": "precedes",
+      "to": "tod.effect.descending-screen",
+      "context": "tod.experiment.heldout-secondary-bypass",
+      "classification": "observed",
+      "detail": "the accepted counter mutation preceded the visible DESCENDING name-table text; the offline model predicted this classification but did not cause it",
+      "evidence": ["ev.exp.r4-heldout-secondary-bypass", "ev.doc.tod-stairs-model"]
+    }
+  ]
+}

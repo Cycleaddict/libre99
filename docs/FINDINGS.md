@@ -14,6 +14,17 @@ byte-identity and emulation held up throughout.
 
 ## F-001 · GSL decompiler misses function entries reached only via computed dispatch (2026-07-28)
 
+**Resolved for the demonstrated failure (2026-08-26, `babb8d1`).** R1 added
+`--entries FILE` for distilled, execution-confirmed GPL instruction starts and
+conservative bounded leading-`FETCH` analysis for caller-inline operands. It emits
+exact-address `trace_XXXX` functions, preserves inline bytes as raw data, and refuses
+conflicting or untileable seeds. The recovered ToD boundary at `>664D..>6651`
+roundtripped all five GROM pages byte-identically, and a held-out replay reached the
+predicted boundaries. Static harvesting of all `CASE`/computed-dispatch tables remains
+possible future automation, but it is not required to close this reproduced defect or
+R1. Raw GROM fetches are not automatically instruction starts and must be distilled
+before use as entries.
+
 **Symptom.** In dense GPL regions the decompiler emits too few `fn`
 boundaries: real routines fall inside a neighboring function's span, or
 inside `d_…` "data" blocks. In the ToD decompilation the combat region is
@@ -33,14 +44,14 @@ readability and annotation suffer badly: annotators had to re-derive
 boundaries by hand (`libre99gsl compile --format grom`, then
 `libre99gpl dis` seeded from probe-trace addresses).
 
-**Suggested direction.**
+**Original suggested direction.**
 1. Decode `CASE`/dispatch tables during entry discovery and harvest their
    targets (static fix — covers most of it).
 2. Add **trace-assisted decompilation**: `libre99gsl decompile
    --entries FILE` accepting a list of known-executed GROM addresses
-   (directly consumable from `libre99probe`'s `trace save` / `cover save`
-   output) to seed additional entries. The recompile-identity gate stays
-   unchanged, so the worst a bad seed can do is fail the gate.
+   distilled from `libre99probe` trace/coverage evidence to seed additional
+   entries. The recompile-identity gate stays unchanged, and invalid,
+   conflicting, or untileable seeds are rejected.
 
 **Root cause confirmed (2026-07-28, follow-up).** A full manual
 re-disassembly of the worst 632-byte "data" block (boundaries seeded from

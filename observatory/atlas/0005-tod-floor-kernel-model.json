@@ -1,0 +1,220 @@
+{
+  "atlas_version": 1,
+  "package": "tod-floor-kernel-model",
+  "title": "Tunnels of Doom bounded per-floor candidate-buffer model",
+  "summary": "Append-only accepted-model package. It records the neutral executable boundary, exact authoring reproductions, frozen A5C3 prediction, one authentic held-out comparison, and retained retry/semantic uncertainty. It stores no commercial bytes or owner-local paths.",
+  "seeded_from": "docs/TOD-FLOOR-KERNEL-MODEL.md and the accepted owner-local comparison identities",
+  "evidence": [
+    {
+      "id": "ev.doc.tod-floor-kernel-model",
+      "kind": "tracked-document",
+      "ref": "docs/TOD-FLOOR-KERNEL-MODEL.md",
+      "detail": "model boundary, neutral algorithm, authoring reproduction, frozen held-out protocol, exact comparison, and uncertainty"
+    },
+    {
+      "id": "ev.tool.tod-floor-kernel-model",
+      "kind": "tracked-document",
+      "ref": "tools/tod_floor_kernel_model.py",
+      "detail": "standard-library prediction and exact-comparison command; contains no commercial bytes"
+    },
+    {
+      "id": "ev.test.tod-floor-kernel-model",
+      "kind": "tracked-document",
+      "ref": "tools/test_tod_floor_kernel_model.py",
+      "detail": "focused operation tests plus optional exact checks against owner-supplied local evidence"
+    },
+    {
+      "id": "ev.exp.floor-kernel-authoring",
+      "kind": "owner-local-experiment",
+      "ref": "tod-mvp/floor-kernel-authoring-comparison",
+      "detail": "existing 0000 and 1234 reconnaissance payloads compared without rerunning either authentic generation",
+      "counts": {"cases": 2, "payload_bytes_per_case": 538, "exact_payload_matches": 2, "exact_next_seed_matches": 2}
+    },
+    {
+      "id": "ev.exp.floor-kernel-heldout-a5c3",
+      "kind": "owner-local-experiment",
+      "ref": "tod-mvp/floor-kernel-heldout-a5c3",
+      "detail": "one predeclared held-out kernel-entry seed; prediction frozen before execution; authentic continuation covered 8246 through 84F1 and reached GENERAL STORE",
+      "counts": {"runs": 1, "payload_bytes": 538, "candidate_writes": 1178, "random_calls": 92, "placement_attempts": 31}
+    }
+  ],
+  "entities": [
+    {
+      "id": "tod.floor-kernel-model",
+      "kind": "subsystem",
+      "name": "bounded candidate-buffer executable model",
+      "order": 0,
+      "detail": "neutral behavioral model of GPL >8246..>84F1 and required local helpers through >86B8"
+    },
+    {
+      "id": "tod.floor-kernel.model-v1",
+      "kind": "routine",
+      "name": "tod-floor-candidate-kernel model version 1",
+      "subsystem": "tod.floor-kernel-model",
+      "order": 10,
+      "space": "offline-model"
+    },
+    {
+      "id": "tod.floor-kernel.experiment.authoring-0000",
+      "kind": "experiment",
+      "name": "accepted 0000-lineage authoring comparison",
+      "subsystem": "tod.floor-kernel-model",
+      "order": 20
+    },
+    {
+      "id": "tod.floor-kernel.experiment.authoring-1234",
+      "kind": "experiment",
+      "name": "accepted 1234-lineage authoring comparison",
+      "subsystem": "tod.floor-kernel-model",
+      "order": 21
+    },
+    {
+      "id": "tod.floor-kernel.experiment.heldout-a5c3",
+      "kind": "experiment",
+      "name": "predeclared held-out kernel-entry seed A5C3",
+      "subsystem": "tod.floor-kernel-model",
+      "order": 22
+    },
+    {
+      "id": "tod.floor-kernel.input.context",
+      "kind": "input",
+      "name": "candidate payload, one-cell context, seed, and neutral control bytes",
+      "subsystem": "tod.floor-kernel-model",
+      "order": 30,
+      "space": "offline-model"
+    },
+    {
+      "id": "tod.floor-kernel.effect.exact-result",
+      "kind": "effect",
+      "name": "exact final candidate payload and next seed",
+      "subsystem": "tod.floor-kernel-model",
+      "order": 40,
+      "space": "offline-model"
+    }
+  ],
+  "facts": [
+    {
+      "id": "fact.floor-kernel.boundary",
+      "subject": "tod.floor-kernel.model-v1",
+      "predicate": "boundary",
+      "value": "GPL >8246..>84F1 plus required local helpers >84F2..>86B8; excludes >62F4, later consumers, stocking/content, rendering, ISR/KSCAN stirring, and generic GPL execution",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.tod-floor-kernel-model", "ev.tool.tod-floor-kernel-model"]
+    },
+    {
+      "id": "fact.floor-kernel.inputs",
+      "subject": "tod.floor-kernel.input.context",
+      "predicate": "required-state",
+      "value": "kernel-entry seed; 538 bytes >34B8..>36D1; 32-byte halos on both sides; counts 14/02/02; position 01/01; control 09",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.tod-floor-kernel-model"]
+    },
+    {
+      "id": "fact.floor-kernel.phase-order",
+      "subject": "tod.floor-kernel.model-v1",
+      "predicate": "phase-order",
+      "value": "reset; 23 accepted value stores; alternating stride-32 then stride-1 passes repeated twice; adjacent-cell cleanup; post-pass return",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.tod-floor-kernel-model", "ev.tool.tod-floor-kernel-model"]
+    },
+    {
+      "id": "fact.floor-kernel.authoring-0000",
+      "subject": "tod.floor-kernel.experiment.authoring-0000",
+      "predicate": "exact-result",
+      "value": "kernel seed 5207 -> 558A; 538-byte SHA-256 c9df1a5878275ef6ebe83e1de5da58ef4765b0dcfcd44b9da7f3bb19e95d67aa; 1184 writes",
+      "classification": "observed",
+      "evidence": ["ev.exp.floor-kernel-authoring", "ev.doc.tod-floor-kernel-model"]
+    },
+    {
+      "id": "fact.floor-kernel.authoring-1234",
+      "subject": "tod.floor-kernel.experiment.authoring-1234",
+      "predicate": "exact-result",
+      "value": "kernel seed 82F0 -> 23A7; 538-byte SHA-256 07b4583365cda870913caee9eb3689052a75a077f0f18bca041bbe5d0ee65603; 1142 writes",
+      "classification": "observed",
+      "evidence": ["ev.exp.floor-kernel-authoring", "ev.doc.tod-floor-kernel-model"]
+    },
+    {
+      "id": "fact.floor-kernel.heldout-freeze",
+      "subject": "tod.floor-kernel.experiment.heldout-a5c3",
+      "predicate": "frozen-prediction",
+      "value": "prediction JSON SHA-256 c031d3659f201273c2dd85973d5caa23cfbcbadf72918230403fc9281470736e; payload SHA-256 58f44c03d67b41d19cd966d632ac1020da86f6e7c2430fdf5014d4c97b73e913; next seed AF57",
+      "classification": "observed",
+      "evidence": ["ev.exp.floor-kernel-heldout-a5c3", "ev.doc.tod-floor-kernel-model"]
+    },
+    {
+      "id": "fact.floor-kernel.heldout-result",
+      "subject": "tod.floor-kernel.experiment.heldout-a5c3",
+      "predicate": "exact-result",
+      "value": "PASS: 538/538 bytes, the 92nd RAND update produced kernel-exit seed AF57, completion through 84F1, 1178 writes, 92 RAND calls, and 31 placement attempts all matched the frozen model; later unrelated RAND updates are outside the boundary",
+      "classification": "observed",
+      "evidence": ["ev.exp.floor-kernel-heldout-a5c3", "ev.doc.tod-floor-kernel-model"]
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "hyp.floor-kernel.byte-meanings",
+      "subject": "tod.floor-kernel-model",
+      "statement": "the exact game or graphical meanings of candidate values >60..>6B are not established and are absent from executable behavior",
+      "classification": "unresolved",
+      "alternatives": ["several connectivity classes", "construction markers", "later-consumer categories"],
+      "resolves_when": "a separate bounded consumer experiment links values to source-confirmed or visible effects",
+      "evidence": ["ev.doc.tod-floor-kernel-model"]
+    },
+    {
+      "id": "hyp.floor-kernel.retry",
+      "subject": "tod.floor-kernel.model-v1",
+      "statement": "general post-pass >857B retry behavior remains outside the accepted three executions; the model refuses the directly decoded >84EB retry trigger instead of guessing a new cycle",
+      "classification": "unresolved",
+      "alternatives": ["all ordinary generated payloads return", "some seeds request another reset and placement cycle"],
+      "resolves_when": "a separately authorized bounded case observes a retry or the helper predicate is reconstructed without broadening into a seed campaign",
+      "evidence": ["ev.doc.tod-floor-kernel-model"]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel.floor-kernel.model.part-of-dungeon",
+      "order": 1,
+      "from": "tod.floor-kernel-model",
+      "kind": "part-of",
+      "to": "tod.dungeon-generation",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.tod-floor-kernel-model"]
+    },
+    {
+      "id": "rel.floor-kernel.input.causes-result",
+      "order": 10,
+      "from": "tod.floor-kernel.input.context",
+      "kind": "causes",
+      "to": "tod.floor-kernel.effect.exact-result",
+      "classification": "observed",
+      "detail": "exact in all two authoring cases and the one predeclared held-out case",
+      "evidence": ["ev.exp.floor-kernel-authoring", "ev.exp.floor-kernel-heldout-a5c3"]
+    },
+    {
+      "id": "rel.floor-kernel.model.writes-payload",
+      "order": 20,
+      "from": "tod.floor-kernel.model-v1",
+      "kind": "writes",
+      "to": "tod.dungeon.state.payload-34B8",
+      "classification": "observed",
+      "evidence": ["ev.exp.floor-kernel-authoring", "ev.exp.floor-kernel-heldout-a5c3"]
+    },
+    {
+      "id": "rel.floor-kernel.model.writes-seed",
+      "order": 21,
+      "from": "tod.floor-kernel.model-v1",
+      "kind": "writes",
+      "to": "tod.dungeon.state.seed-83C0",
+      "classification": "observed",
+      "evidence": ["ev.exp.floor-kernel-authoring", "ev.exp.floor-kernel-heldout-a5c3"]
+    }
+  ],
+  "queries": [
+    {
+      "id": "q.tod.floor-kernel-model",
+      "subsystem": "tod.floor-kernel-model",
+      "question": "What does the accepted bounded candidate-buffer model take, execute, and prove against authentic Tunnels of Doom?",
+      "answer": "The neutral model starts at GPL >8246 with a kernel-entry seed, the 538-byte >34B8..>36D1 payload, one-cell VRAM context, and the proven count/position/control bytes. It performs the decoded reset, 23 accepted seed-dependent stores, alternating stride->0020 and stride->0001 propagation passes twice, and adjacent-cell cleanup using the authentic RAND LCG. It exactly reproduces the accepted >5207 and >82F0 kernel-entry cases. A prediction for the predeclared unseen seed >A5C3 was frozen first; one authentic run then matched all 538 bytes (SHA-256 58f44c03d67b41d19cd966d632ac1020da86f6e7c2430fdf5014d4c97b73e913), next seed >AF57, completion through >84F1, 1,178 writes, 92 RAND calls, and 31 placement attempts. Byte meanings, later content/stocking, inter-floor contracts, and general >857B retry behavior remain unresolved."
+    }
+  ]
+}

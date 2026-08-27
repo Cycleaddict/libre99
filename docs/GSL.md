@@ -402,15 +402,23 @@ upward, the console OS at `>0000–5FFF`.
    `--rom`.
 2. **Discovery** — standard `>AA` GROM headers on every page yield power-up,
    program, DSR, subprogram and interrupt entries (with names); on console
-   images `>0020` is the boot entry. Code is traced from these roots through
-   `B`/`BR`/`BS`/`CALL` targets and fall-through, with a grammar-exact `FMT`
+   images `>0020` is the boot entry. A runtime trace may contribute additional
+   confirmed instruction starts with `--entries`; these seeds are processed
+   before the static roots. Code is traced from the roots through `B`/`BR`/`BS`/
+   `CALL` targets and fall-through, with a grammar-exact `FMT`
    scanner (nested `RPTB`, GAS string operands, `FEND` loopback addresses —
    per `rom/RECON.md` §7).
 3. **Emission** — traced instructions become statements (§6); everything else
-   becomes `data` (all-zero spans are elided). `CALL` targets and header
-   entries become `fn`s — named from the header program names (`prog_*`) or
-   their address (`sub_6123`); branch targets become labels (`L_6134`).
+   becomes `data` (all-zero spans are elided). `CALL` targets, trace entries,
+   and header entries become `fn`s — named from the header program names
+   (`prog_*`), their trace address (`trace_6123`), or their static address
+   (`sub_6123`); branch targets become labels (`L_6134`).
    Scratchpad/VDP cells become vars (`b_833F`, `w_8340`, `vb_0300`, …).
+   `--map FILE` additionally writes deterministic JSON from these final tiles
+   after verification. Each record names its generated function owner, range,
+   tile kind, statement start, leading opcode byte, and non-overlapping
+   `opcode`, `operand`, `fmt`, `raw-*`, or `inline-operand` byte spans. The map
+   is not reconstructed from emitted GSL text.
 4. **Semantic annotation** — advisory analysis layered on top (names and
    comments only; the addresses in every declaration remain the ground truth):
    - vars at documented machine cells take their standard names —
@@ -441,7 +449,14 @@ upward, the console OS at `>0000–5FFF`.
      8×8 pixel-art comment bands above their rows, sound lists get a
      block/duration summary, and each chunk lists the functions that `move`
      from it.
-5. **Verification** — every decoded instruction is re-encoded and compared
+5. **CALL inline operands** — when every effective path at a CALL target begins
+   with one or more `FETCH` instructions, those instructions consume the same
+   number of bytes following the CALL in the caller's stream. The tracer proves
+   only a small bounded prefix, following direct branches and conditional
+   branches whose target equals their own fall-through. It reserves proven
+   bytes as raw inline operands and resumes decoding after them; cycles,
+   unavailable bytes, ambiguous branches, and conflicts are never guessed.
+6. **Verification** — every decoded instruction is re-encoded and compared
    against the original bytes; `FMT` blocks re-encode through the same rules
    as the `fmt { }` compiler (structural loop-backs, canonical GAS operands)
    and become `fmt { }` statements only on byte-equality. Any mismatch
@@ -461,10 +476,20 @@ decompilation record: input provenance, per-function origin (which header,
 which callers), data cross-references from `move` sources, ASCII gutters, and
 decoded listings for the rare `FMT` blocks that stay raw.
 
-Limits worth knowing: bytes consumed via `FETCH` after a `CALL` are untracked
-(they tile as code — harmless, occasionally ugly); banked/duplicate GROM pages
-in a `.ctg` are rejected; TMS9900 `rom` banks are carried as data, never
-decompiled (GSL is a GPL tool — see `libre99asm`'s disassembler for CPU code).
+Limits worth knowing: `--entries` accepts distilled, execution-confirmed GPL
+instruction starts, not an unfiltered GROM-fetch trace (which also contains
+operand and data fetches); banked/duplicate GROM pages in a `.ctg` are rejected;
+TMS9900 `rom` banks are carried as data, never decompiled (GSL is a GPL tool —
+see `libre99asm`'s disassembler for CPU code).
+
+This narrow recovery behavior was informed by three independently implemented
+tools, without copying their code: zeldin/disgpl's explicit per-callee FETC-byte
+metadata and post-CALL data treatment (`55601cf`), endlos99/xdt99 xdg99's
+explicit run-address seeds and non-overlapping code registration (`a77bd31`),
+and ti99sim dumpgrom's header entry discovery plus separate code/data marking
+and FETCH-derived post-CALL data (`80e74d7`). Libre99 keeps the shared neutral
+ideas—explicit roots, conservative non-overlap, and caller-inline operands—in
+its own verified GSL pipeline.
 
 ---
 
@@ -475,7 +500,10 @@ libre99gsl compile   <in.gsl> -o <out>   [--format ctg|grom|grom24|rombin]
 libre99gsl decompile <in.ctg|in.bin> -o <out.gsl>
                      [--base 0xNNNN]   GROM base for headerless .bin dumps
                      [--rom]           treat a .bin as a CPU-ROM dump
-libre99gsl roundtrip <in.ctg|in.bin> [--keep <out.gsl>]
+                     [--entries FILE]  confirmed GPL instruction starts
+                     [--map FILE]      verified structural-byte JSON
+libre99gsl roundtrip <in.ctg|in.bin> [--keep <out.gsl>] [--entries FILE]
+                     [--map FILE]
 libre99gsl verify    <in.gsl> <against.ctg|.bin>  [--base 0xNNNN] [--rom]
 ```
 
@@ -483,6 +511,13 @@ libre99gsl verify    <in.gsl> <against.ctg|.bin>  [--base 0xNNNN] [--rom]
 per-page/per-bank verdict — the same check the test suite runs over the
 committed images and the local cartridge corpus (`third-party/cartridges/`,
 via `libre99-core`'s `third_party` gate).
+
+An entries file contains one hexadecimal GPL address per line (`>6651`,
+`0x6651`, or `6651`); blank lines and `#` comments are allowed. Each address
+is a claim that execution began an instruction there. The decompiler emits an
+exact-address `fn trace_XXXX() @ 0xXXXX` (or retains an established header name
+at the same address), suitable for downstream scripted import, and errors rather
+than silently ignoring a seed that cannot be tiled on an instruction boundary.
 
 `verify` compiles a `.gsl` and byte-compares its payload against an original
 image — the check to run after **editing** a decompilation (renames,

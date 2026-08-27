@@ -54,7 +54,9 @@
 use std::sync::LazyLock;
 
 use libre99_core::bus::Bus;
-use libre99_core::machine::{Machine, Tms9900Bus};
+use libre99_core::machine::{
+    Machine, StateAccess, StateAccessFilter, StateFilter, StateSpace, Tms9900Bus,
+};
 
 static CONSOLE_ROM: LazyLock<Option<Vec<u8>>> =
     LazyLock::new(|| libre99_core::third_party::load("roms/994aROM.Bin"));
@@ -143,16 +145,36 @@ fn cru_bit_addresses_alias_into_the_12_bit_space() {
 fn grom_port_accesses_stall_beyond_the_multiplexer() {
     let mut bus = Tms9900Bus::new(&[], &[]);
     assert_eq!(bus.wait_states_rw(0x9800, false), 23, "data read: 4 + 19");
-    assert_eq!(bus.wait_states_rw(0x9802, false), 17, "address read: 4 + 13");
+    assert_eq!(
+        bus.wait_states_rw(0x9802, false),
+        17,
+        "address read: 4 + 13"
+    );
     assert_eq!(bus.wait_states_rw(0x9C00, true), 26, "data write: 4 + 22");
-    assert_eq!(bus.wait_states_rw(0x9C02, true), 19, "first address byte: 4 + 15");
+    assert_eq!(
+        bus.wait_states_rw(0x9C02, true),
+        19,
+        "first address byte: 4 + 15"
+    );
     bus.write_byte(0x9C02, 0x12);
-    assert_eq!(bus.wait_states_rw(0x9C02, true), 25, "second address byte: 4 + 21");
+    assert_eq!(
+        bus.wait_states_rw(0x9C02, true),
+        25,
+        "second address byte: 4 + 21"
+    );
     bus.write_byte(0x9C02, 0x34);
-    assert_eq!(bus.wait_states_rw(0x9C02, true), 19, "phase resets after a full address");
+    assert_eq!(
+        bus.wait_states_rw(0x9C02, true),
+        19,
+        "phase resets after a full address"
+    );
     // The odd half of a word access is open bus; everything else is unchanged.
     assert_eq!(bus.wait_states_rw(0x9801, false), 4);
-    assert_eq!(bus.wait_states_rw(0x8C00, true), 4, "VDP keeps the plain mux wait");
+    assert_eq!(
+        bus.wait_states_rw(0x8C00, true),
+        4,
+        "VDP keeps the plain mux wait"
+    );
     assert_eq!(bus.wait_states_rw(0x0000, false), 0, "console ROM is fast");
     assert_eq!(bus.wait_states_rw(0x8300, false), 0, "scratchpad is fast");
 }
@@ -192,7 +214,11 @@ fn word_write_to_vdp_data_port_lands_one_byte() {
 
     // One word write of >ABCD: only the high byte (>AB) is latched.
     m.bus_mut().write_word(0x8C00, 0xABCD);
-    assert_eq!(m.vdp().vram(0x0100), 0xAB, "word write latches the high byte");
+    assert_eq!(
+        m.vdp().vram(0x0100),
+        0xAB,
+        "word write latches the high byte"
+    );
     assert_eq!(
         m.vdp().vram(0x0101),
         0x00,
@@ -205,5 +231,280 @@ fn word_write_to_vdp_data_port_lands_one_byte() {
         m.vdp().vram(0x0101),
         0xEE,
         "a word access advances the VRAM address by one, not two"
+    );
+}
+
+/// The observatory's VDP-write channel records semantic data-port writes with
+/// their causing instruction, while remaining absent from machine state. This
+/// drives real TMS9900 instructions rather than poking the bus directly.
+#[test]
+fn vdp_write_provenance_is_ordered_filtered_and_observational() {
+    let mut prepared = Machine::new(&[], &[]);
+    prepared.cpu_mut().set_wp(0x8300);
+    prepared.cpu_mut().set_pc(0x8320);
+    prepared.bus_mut().poke_word(0x8302, 0xAB00); // R1 byte value >AB
+    prepared.bus_mut().poke_word(0x8304, 0xCD00); // R2 byte value >CD
+    prepared.bus_mut().poke_word(0x8306, 0xEF12); // R3 word value >EF12
+    prepared.bus_mut().poke_word(0x8312, 0xA500); // R9 GPL-opcode breadcrumb
+    prepared.bus_mut().poke_word(0x8316, 0x9000); // R11 link breadcrumb
+    prepared.bus_mut().poke_word(0x8320, 0xD801); // MOVB R1,@>8C00
+    prepared.bus_mut().poke_word(0x8322, 0x8C00);
+    prepared.bus_mut().poke_word(0x8324, 0xD802); // MOVB R2,@>8C00
+    prepared.bus_mut().poke_word(0x8326, 0x8C00);
+    prepared.bus_mut().poke_word(0x8328, 0xC803); // MOV  R3,@>8C00
+    prepared.bus_mut().poke_word(0x832A, 0x8C00);
+    prepared.vdp_mut().set_vram(0x0100, 0x11);
+    prepared.vdp_mut().set_vram(0x0101, 0x22);
+    prepared.vdp_mut().set_vram(0x0102, 0x33);
+    prepared.vdp_mut().set_vram(0x0103, 0x44);
+    prepared.bus_mut().write_byte(0x8C02, 0x00);
+    prepared.bus_mut().write_byte(0x8C02, 0x41); // write address >0100
+    let checkpoint = prepared.save_state();
+
+    let mut control = Machine::new(&[], &[]);
+    control.load_state(&checkpoint).unwrap();
+    let mut observed = Machine::new(&[], &[]);
+    observed.load_state(&checkpoint).unwrap();
+    assert!(observed.bus().vdp_write_filter().is_none());
+    assert!(observed.bus().vdp_write_log().is_empty());
+    observed.bus_mut().record_vdp_writes(0x0100, 0x0102);
+
+    for _ in 0..3 {
+        assert_eq!(control.step(), observed.step());
+        assert_eq!(
+            control.save_state(),
+            observed.save_state(),
+            "recording must not change any intermediate machine state"
+        );
+    }
+
+    let log = observed.bus().vdp_write_log();
+    assert_eq!(log.len(), 3, "two MOVB writes plus one high byte from MOV");
+    assert_eq!((log[0].pc, log[0].opcode), (0x8320, 0xD801));
+    assert_eq!((log[1].pc, log[1].opcode), (0x8324, 0xD802));
+    assert_eq!((log[2].pc, log[2].opcode), (0x8328, 0xC803));
+    assert!(log.iter().all(|event| event.r11 == 0x9000));
+    assert!(log.iter().all(|event| event.r9 == 0xA500));
+    // Empty GROM: the prefetch-corrected next-data address is stable and
+    // observational (it must not differ across the recorded writes).
+    let grom = log[0].grom;
+    assert!(log.iter().all(|event| event.grom == grom));
+    assert_eq!(
+        log.iter()
+            .map(|e| (e.port, e.address, e.old_value, e.value))
+            .collect::<Vec<_>>(),
+        vec![
+            (0x8C00, 0x0100, 0x11, 0xAB),
+            (0x8C00, 0x0101, 0x22, 0xCD),
+            (0x8C00, 0x0102, 0x33, 0xEF),
+        ]
+    );
+    assert!(log.windows(2).all(|pair| pair[0].cycle < pair[1].cycle));
+    assert_eq!(
+        observed.vdp().vram(0x0103),
+        0x44,
+        "odd word byte is not latched"
+    );
+
+    // Diagnostic recording is absent from the serialized machine and cannot
+    // perturb execution or presentation.
+    assert_eq!(control.save_state(), observed.save_state());
+    let mut control_frame = vec![0; 256 * 192];
+    let mut observed_frame = vec![0; 256 * 192];
+    control.render(&mut control_frame);
+    observed.render(&mut observed_frame);
+    assert_eq!(control_frame, observed_frame);
+
+    // A fresh filtered run retains only the matching semantic destination.
+    let mut filtered = Machine::new(&[], &[]);
+    filtered.load_state(&checkpoint).unwrap();
+    filtered.bus_mut().record_vdp_writes(0x0101, 0x0101);
+    for _ in 0..3 {
+        filtered.step();
+    }
+    assert_eq!(filtered.bus().vdp_write_log().len(), 1);
+    assert_eq!(filtered.bus().vdp_write_log()[0].address, 0x0101);
+}
+
+/// The VDP recorder keeps the GROM stream position (prefetch-corrected next
+/// byte) with each write so GPL activity can be attributed without a CPU trace.
+#[test]
+fn vdp_write_provenance_retains_grom_stream_position() {
+    let mut m = Machine::new(&[], &[]);
+    m.bus_mut().grom.load(0x6010, &[0xBE]);
+    m.cpu_mut().set_wp(0x8300);
+    m.cpu_mut().set_pc(0x8320);
+    m.bus_mut().poke_word(0x8302, 0xAB00); // R1
+    m.bus_mut().poke_word(0x8320, 0xD801); // MOVB R1,@>8C00
+    m.bus_mut().poke_word(0x8322, 0x8C00);
+    m.bus_mut().write_byte(0x9C02, 0x60);
+    m.bus_mut().write_byte(0x9C02, 0x10); // GROM >6010 + prefetch
+    m.bus_mut().write_byte(0x8C02, 0x00);
+    m.bus_mut().write_byte(0x8C02, 0x40); // VRAM write address >0000
+    assert_eq!(m.bus().grom.next_data_address(), 0x6010);
+    assert_eq!(m.bus().grom.next_data_byte(), 0xBE);
+    m.bus_mut().record_vdp_writes(0x0000, 0x0000);
+    m.step();
+    let log = m.bus().vdp_write_log();
+    assert_eq!(log.len(), 1);
+    assert_eq!(log[0].grom, 0x6010);
+    assert_eq!(log[0].grom_byte, 0xBE);
+}
+
+#[test]
+fn filtered_state_provenance_attributes_cpu_vram_and_grom_without_perturbation() {
+    let mut prepared = Machine::new(&[], &[]);
+    prepared.cpu_mut().set_wp(0x8300);
+    prepared.cpu_mut().set_pc(0x8320);
+    prepared.bus_mut().grom.load(0x6010, &[0xBE]);
+    prepared.bus_mut().poke(0x2000, 0xA5);
+    prepared.bus_mut().poke(0x2001, 0xB6);
+    prepared.vdp_mut().set_vram(0x1234, 0x5A);
+    prepared.bus_mut().write_byte(0x9C02, 0x60);
+    prepared.bus_mut().write_byte(0x9C02, 0x10);
+    prepared.bus_mut().write_byte(0x8C02, 0x34);
+    prepared.bus_mut().write_byte(0x8C02, 0x12); // read setup >1234
+    prepared.bus_mut().poke_word(0x8320, 0xD060); // MOVB @>9800,R1
+    prepared.bus_mut().poke_word(0x8322, 0x9800);
+    prepared.bus_mut().poke_word(0x8324, 0xD0A0); // MOVB @>8800,R2
+    prepared.bus_mut().poke_word(0x8326, 0x8800);
+    prepared.bus_mut().poke_word(0x8328, 0xD0E0); // MOVB @>2000,R3
+    prepared.bus_mut().poke_word(0x832A, 0x2000);
+    prepared.bus_mut().poke_word(0x832C, 0xD803); // MOVB R3,@>2001
+    prepared.bus_mut().poke_word(0x832E, 0x2001);
+    prepared.bus_mut().poke_word(0x8330, 0xD803); // MOVB R3,@>8C00
+    prepared.bus_mut().poke_word(0x8332, 0x8C00);
+    let checkpoint = prepared.save_state();
+
+    let mut control = Machine::new(&[], &[]);
+    control.load_state(&checkpoint).unwrap();
+    let mut observed = Machine::new(&[], &[]);
+    observed.load_state(&checkpoint).unwrap();
+    observed.bus_mut().record_state_accesses(vec![
+        StateFilter {
+            space: StateSpace::Cpu,
+            access: StateAccessFilter::ReadWrite,
+            start: 0x2000,
+            end: 0x2001,
+        },
+        StateFilter {
+            space: StateSpace::Cpu,
+            access: StateAccessFilter::ReadWrite,
+            start: 0x8306,
+            end: 0x8307,
+        },
+        StateFilter {
+            space: StateSpace::Vram,
+            access: StateAccessFilter::ReadWrite,
+            start: 0x1234,
+            end: 0x1236,
+        },
+        StateFilter {
+            space: StateSpace::Grom,
+            access: StateAccessFilter::Read,
+            start: 0x6010,
+            end: 0x6010,
+        },
+    ]);
+
+    for _ in 0..5 {
+        assert_eq!(control.step(), observed.step());
+        assert_eq!(control.save_state(), observed.save_state());
+    }
+
+    let log = observed.bus().state_access_log();
+    assert!(log.iter().any(|event| {
+        (
+            event.space,
+            event.access,
+            event.address,
+            event.port,
+            event.value,
+        ) == (
+            StateSpace::Grom,
+            StateAccess::Read,
+            0x6010,
+            Some(0x9800),
+            0xBE,
+        ) && (event.pc, event.opcode) == (0x8320, 0xD060)
+    }));
+    assert!(log.iter().any(|event| {
+        (
+            event.space,
+            event.access,
+            event.address,
+            event.port,
+            event.value,
+        ) == (
+            StateSpace::Vram,
+            StateAccess::Read,
+            0x1234,
+            Some(0x8800),
+            0x5A,
+        ) && (event.pc, event.opcode) == (0x8324, 0xD0A0)
+    }));
+    assert!(log.iter().any(|event| {
+        (
+            event.space,
+            event.access,
+            event.address,
+            event.old_value,
+            event.value,
+        ) == (
+            StateSpace::Cpu,
+            StateAccess::Write,
+            0x2001,
+            Some(0xB6),
+            0xA5,
+        ) && (event.pc, event.opcode) == (0x832C, 0xD803)
+    }));
+    assert!(log.iter().any(|event| {
+        (
+            event.space,
+            event.access,
+            event.address,
+            event.old_value,
+            event.value,
+        ) == (
+            StateSpace::Vram,
+            StateAccess::Write,
+            0x1236,
+            Some(0x00),
+            0xA5,
+        ) && (event.pc, event.opcode) == (0x8330, 0xD803)
+    }));
+    assert!(log.iter().any(|event| event.address == 0x8306));
+    assert!(log.windows(2).all(|pair| pair[0].cycle <= pair[1].cycle));
+
+    let state = observed.save_state();
+    observed.load_state(&state).unwrap();
+    assert!(observed.bus().state_access_filters().is_none());
+    assert!(observed.bus().state_access_log().is_empty());
+}
+
+#[test]
+fn interrupt_entry_is_not_misattributed_to_the_interrupted_instruction() {
+    let mut rom = vec![0; 0x2000];
+    rom[4..8].copy_from_slice(&[0x83, 0x80, 0x10, 0x00]); // level-1 vector
+    let mut m = Machine::new(&rom, &[]);
+    m.cpu_mut().set_wp(0x8300);
+    m.cpu_mut().set_pc(0x8320);
+    m.cpu_mut().set_st(1); // accept level 1
+    m.bus_mut().write_byte(0x8C02, 0x20);
+    m.bus_mut().write_byte(0x8C02, 0x81); // VDP interrupts enabled
+    m.bus_mut().write_cru_bit(2, true); // 9901 /INT2 mask enabled
+    m.vdp_mut().vblank();
+    m.bus_mut().record_state_accesses(vec![StateFilter {
+        space: StateSpace::Cpu,
+        access: StateAccessFilter::Write,
+        start: 0x839A,
+        end: 0x839F,
+    }]);
+
+    m.step();
+    assert_eq!(m.cpu().pc(), 0x1000);
+    assert!(
+        m.bus().state_access_log().is_empty(),
+        "interrupt context writes have no causing instruction PC/opcode"
     );
 }

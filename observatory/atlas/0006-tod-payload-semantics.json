@@ -1,0 +1,266 @@
+{
+  "atlas_version": 1,
+  "package": "tod-payload-semantics",
+  "title": "Tunnels of Doom bounded payload consumer semantics",
+  "summary": "Append-only accepted package for the 17 by 26 structural decoder, exact neutral class and connection-mask table, existing authoring reads, corrected held-out distinct-tuple comparison, and retained game-level uncertainty. It stores no commercial bytes or owner-local paths.",
+  "seeded_from": "docs/TOD-PAYLOAD-SEMANTICS.md and accepted owner-local authoring/frozen-heldout evidence identities",
+  "evidence": [
+    {
+      "id": "ev.doc.tod-payload-semantics",
+      "kind": "tracked-document",
+      "ref": "docs/TOD-PAYLOAD-SEMANTICS.md",
+      "detail": "consumer boundary, neutral decoder table, corrected acceptance rule, existing-evidence comparison, and uncertainty"
+    },
+    {
+      "id": "ev.tool.tod-payload-decoder",
+      "kind": "tracked-document",
+      "ref": "tools/tod_payload_decoder.py",
+      "detail": "standard-library structural decoder and distinct-tuple comparison; contains no commercial payload"
+    },
+    {
+      "id": "ev.test.tod-payload-decoder",
+      "kind": "tracked-document",
+      "ref": "tools/test_tod_payload_decoder.py",
+      "detail": "focused decoder, acceptance-rule, contradiction, and optional owner-local evidence checks"
+    },
+    {
+      "id": "ev.static.tod-payload-consumers",
+      "kind": "owner-local-experiment",
+      "ref": "tod-mvp/payload-consumer-byte-verified-gsl",
+      "detail": "byte-verified static recovery of GPL >A3B5..>A3E1 and >A5AF..>A617; recovery and commercial bytes remain owner-local"
+    },
+    {
+      "id": "ev.exp.tod-payload-authoring",
+      "kind": "owner-local-experiment",
+      "ref": "tod-mvp/payload-consumer-authoring",
+      "detail": "existing generated-floor payload and filtered consumer reads; no rerun",
+      "counts": {"classifier_unique_addresses": 124, "mask_unique_addresses": 125, "union_unique_addresses": 125, "contradictory_addresses": 0}
+    },
+    {
+      "id": "ev.exp.tod-payload-heldout",
+      "kind": "owner-local-experiment",
+      "ref": "tod-mvp/payload-consumer-frozen-heldout-region",
+      "detail": "deterministically selected region frozen before comparison; comparison applies distinct raw/class/mask coverage and gives no positive claim to unvisited duplicates",
+      "counts": {"coordinates": 16, "observed_coordinates": 11, "not_observed_coordinates": 5, "distinct_tuples": 4, "covered_distinct_tuples": 4, "partial_observations": 0, "contradictions": 0}
+    }
+  ],
+  "entities": [
+    {
+      "id": "tod.payload-semantics",
+      "kind": "subsystem",
+      "name": "bounded candidate-payload consumer semantics",
+      "order": 0,
+      "detail": "neutral 17 by 26 structural decoding only; excludes rendering, stocking, inter-floor contracts, and complete generator semantics"
+    },
+    {
+      "id": "tod.payload.routine.classifier-A3B5",
+      "kind": "routine",
+      "name": "payload-byte neutral classifier",
+      "subsystem": "tod.payload-semantics",
+      "order": 10,
+      "address": ">A3B5..>A3E1",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.payload.routine.connections-A5AF",
+      "kind": "routine",
+      "name": "direction and connection-mask consumer",
+      "subsystem": "tod.payload-semantics",
+      "order": 11,
+      "address": ">A5AF..>A617",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.payload.operation.classify-A3B5",
+      "kind": "operation",
+      "name": "normalize and classify one payload byte",
+      "subsystem": "tod.payload-semantics",
+      "order": 20,
+      "address": ">A3B5",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.payload.operation.mask-A5E1",
+      "kind": "operation",
+      "name": "select and test one directional connection bit",
+      "subsystem": "tod.payload-semantics",
+      "order": 21,
+      "address": ">A5E1",
+      "space": "cartridge-grom"
+    },
+    {
+      "id": "tod.payload.state.grid",
+      "kind": "state-cell",
+      "name": "17 by 26 active structural grid",
+      "subsystem": "tod.payload-semantics",
+      "order": 30,
+      "address": ">34B8..>36D1",
+      "space": "vram",
+      "detail": "active coordinates use a 32-byte stride; the entity describes layout and consumer interpretation, not stored commercial bytes"
+    },
+    {
+      "id": "tod.payload.experiment.authoring",
+      "kind": "experiment",
+      "name": "existing authoring-floor consumer comparison",
+      "subsystem": "tod.payload-semantics",
+      "order": 40
+    },
+    {
+      "id": "tod.payload.experiment.heldout",
+      "kind": "experiment",
+      "name": "frozen held-out region consumer comparison",
+      "subsystem": "tod.payload-semantics",
+      "order": 41
+    },
+    {
+      "id": "tod.payload.effect.decoded-structure",
+      "kind": "effect",
+      "name": "neutral class and cardinal connection mask",
+      "subsystem": "tod.payload-semantics",
+      "order": 50,
+      "space": "offline-analysis"
+    }
+  ],
+  "facts": [
+    {
+      "id": "fact.payload.geometry",
+      "subject": "tod.payload.state.grid",
+      "predicate": "geometry",
+      "value": "17 rows by 26 columns; address = 34B8 + row * 0020 + column",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.tod-payload-consumers", "ev.doc.tod-payload-semantics"]
+    },
+    {
+      "id": "fact.payload.class-table",
+      "subject": "tod.payload.operation.classify-A3B5",
+      "predicate": "normalized-byte-to-neutral-class",
+      "value": "60..66 -> 1; 67 -> 2; 68 -> 5; 69 -> 4; 6A -> 3; 6B -> 0; bit 10 is ignored",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.tod-payload-consumers", "ev.doc.tod-payload-semantics", "ev.tool.tod-payload-decoder"]
+    },
+    {
+      "id": "fact.payload.direction-table",
+      "subject": "tod.payload.operation.mask-A5E1",
+      "predicate": "direction-index",
+      "value": "0 north offset -32 mask 01; 1 east offset +1 mask 02; 2 south offset +32 mask 04; 3 west offset -1 mask 08",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.tod-payload-consumers", "ev.doc.tod-payload-semantics"]
+    },
+    {
+      "id": "fact.payload.connection-table",
+      "subject": "tod.payload.operation.mask-A5E1",
+      "predicate": "normalized-byte-to-connection-mask",
+      "value": "60:0A 61:05 62:0B 63:0E 64:0D 65:07 66:0F 67:0F 68:0F 69:0F 6A:0F 6B:00",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.tod-payload-consumers", "ev.doc.tod-payload-semantics", "ev.tool.tod-payload-decoder"]
+    },
+    {
+      "id": "fact.payload.direct-consumers",
+      "subject": "tod.payload.routine.connections-A5AF",
+      "predicate": "direct-consumer-sites",
+      "value": "GPL >A62B..>A662 and >A766",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.tod-payload-consumers", "ev.doc.tod-payload-semantics"]
+    },
+    {
+      "id": "fact.payload.authoring-reads",
+      "subject": "tod.payload.experiment.authoring",
+      "predicate": "consumer-read-comparison",
+      "value": "PASS: classifier read 124 unique addresses; mask read 125; union 125; every observed raw byte equals the corresponding recorded payload byte",
+      "classification": "observed",
+      "evidence": ["ev.exp.tod-payload-authoring", "ev.test.tod-payload-decoder", "ev.doc.tod-payload-semantics"]
+    },
+    {
+      "id": "fact.payload.heldout-freeze",
+      "subject": "tod.payload.experiment.heldout",
+      "predicate": "frozen-prediction",
+      "value": "first row-major qualifying 4 by 4 region; prediction JSON SHA-256 27873a12a816bb933e9bf28f32f5a0903cb3b753c3d39b7bd569aa19d511693d",
+      "classification": "observed",
+      "evidence": ["ev.exp.tod-payload-heldout", "ev.doc.tod-payload-semantics"]
+    },
+    {
+      "id": "fact.payload.heldout-result",
+      "subject": "tod.payload.experiment.heldout",
+      "predicate": "distinct-tuple-comparison",
+      "value": "PASS: all 4 distinct raw/class/mask tuples have an authentic observation; 11 of 16 coordinates observed by both operations; 5 duplicate 6B/class-0/mask-00 coordinates notObserved; 0 partial observations; 0 contradictions",
+      "classification": "observed",
+      "evidence": ["ev.exp.tod-payload-heldout", "ev.test.tod-payload-decoder", "ev.doc.tod-payload-semantics"]
+    },
+    {
+      "id": "fact.payload.acceptance-rule",
+      "subject": "tod.payload.effect.decoded-structure",
+      "predicate": "comparison-contract",
+      "value": "each distinct raw/class/mask tuple in the frozen region requires at least one observed coordinate and no contradiction; duplicate unreachable coordinates remain notObserved and support no coordinate-specific claim",
+      "classification": "source-confirmed",
+      "evidence": ["ev.doc.tod-payload-semantics", "ev.tool.tod-payload-decoder", "ev.test.tod-payload-decoder"]
+    }
+  ],
+  "hypotheses": [
+    {
+      "id": "hyp.payload.game-names",
+      "subject": "tod.payload.effect.decoded-structure",
+      "statement": "exact game-level names for the raw values and neutral consumer classes are not established",
+      "classification": "unresolved",
+      "alternatives": ["structural cell categories", "construction markers", "later-consumer categories with several graphical realizations"],
+      "resolves_when": "a separately authorized bounded consumer-to-visible-effect experiment distinguishes the alternatives",
+      "evidence": ["ev.doc.tod-payload-semantics"]
+    },
+    {
+      "id": "hyp.payload.unvisited-coordinates",
+      "subject": "tod.payload.experiment.heldout",
+      "statement": "the five unvisited duplicate coordinates have no observed coordinate-specific role despite their tuple being covered elsewhere",
+      "classification": "unresolved",
+      "alternatives": ["not needed on this execution path", "reachable through a different direction or later consumer", "structural padding or inactive cell"],
+      "resolves_when": "a future independently motivated experiment observes those coordinates; no experiment is authorized solely to force coverage",
+      "evidence": ["ev.exp.tod-payload-heldout", "ev.doc.tod-payload-semantics"]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel.payload.classifier.reads-grid",
+      "order": 10,
+      "from": "tod.payload.operation.classify-A3B5",
+      "kind": "reads",
+      "to": "tod.payload.state.grid",
+      "classification": "observed",
+      "detail": "125 unique existing authoring addresses and covered held-out coordinates",
+      "evidence": ["ev.exp.tod-payload-authoring", "ev.exp.tod-payload-heldout"]
+    },
+    {
+      "id": "rel.payload.mask.reads-grid",
+      "order": 11,
+      "from": "tod.payload.operation.mask-A5E1",
+      "kind": "reads",
+      "to": "tod.payload.state.grid",
+      "classification": "observed",
+      "detail": "connection-mask reads at the source-confirmed consumer point",
+      "evidence": ["ev.exp.tod-payload-authoring", "ev.exp.tod-payload-heldout"]
+    },
+    {
+      "id": "rel.payload.classifier.causes-decoding",
+      "order": 20,
+      "from": "tod.payload.operation.classify-A3B5",
+      "kind": "causes",
+      "to": "tod.payload.effect.decoded-structure",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.tod-payload-consumers", "ev.doc.tod-payload-semantics"]
+    },
+    {
+      "id": "rel.payload.mask.causes-decoding",
+      "order": 21,
+      "from": "tod.payload.operation.mask-A5E1",
+      "kind": "causes",
+      "to": "tod.payload.effect.decoded-structure",
+      "classification": "source-confirmed",
+      "evidence": ["ev.static.tod-payload-consumers", "ev.doc.tod-payload-semantics"]
+    }
+  ],
+  "queries": [
+    {
+      "id": "q.tod.payload-semantics",
+      "subsystem": "tod.payload-semantics",
+      "question": "How do the recovered Tunnels of Doom consumers interpret the neutral per-floor candidate payload, and what did the existing held-out comparison establish?",
+      "answer": "The payload is a 17 by 26 active grid at VRAM >34B8..>36D1 with stride 32. GPL >A3B5 clears bit >10 and maps normalized >60..>6B to neutral classes; the >A5E1 consumer maps those values to cardinal connection masks. Existing authoring evidence agrees at 125 unique addresses. In the frozen held-out region, all 4 distinct raw/class/mask tuples were observed without contradiction; 11 of 16 coordinates were visited and five duplicate >6B/class-0/mask >00 coordinates remain notObserved. Exact game-level names and coordinate-specific meanings for unvisited cells remain unresolved."
+    }
+  ]
+}

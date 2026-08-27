@@ -173,6 +173,75 @@ fn trace_and_coverage_record_the_evidence_channels() {
 }
 
 #[test]
+fn vdp_write_trace_is_filtered_attributed_and_excludes_diagnostic_pokes() {
+    let mut s = Session::clean_room();
+
+    ok(&mut s, "vtrace on 1000 1000");
+    ok(&mut s, "vpoke 1000 AA");
+    let status = ok(&mut s, "vtrace show");
+    assert!(status.contains("log holds 0 writes"), "{status}");
+
+    ok(&mut s, "vtrace on 0000 3FFF");
+    ok(&mut s, "frames 30");
+    let tail = ok(&mut s, "vtrace tail 4");
+    for field in ["cycle=", "frame=", "pc=>", "opcode=>", "r11=>", "r9=>", "grom=>", "gbyte=>", "op=write-data", "port=>8C00", "vram=>", "byte=>"] {
+        assert!(tail.contains(field), "missing {field:?} in {tail}");
+    }
+
+    let path = scratch("vtrace.txt");
+    ok(&mut s, &format!("vtrace save {}", path.display()));
+    let trace = std::fs::read_to_string(&path).unwrap();
+    assert!(trace.lines().next().is_some_and(|line| line.contains("pc=>")));
+    ok(&mut s, "vtrace clear");
+    assert!(ok(&mut s, "vtrace").contains("log holds 0 writes"));
+    assert!(ok(&mut s, "vtrace off").contains("vtrace off"));
+    assert!(ok(&mut s, "vtrace").contains("no log allocated"));
+    let _ = std::fs::remove_file(&path);
+}
+
+#[test]
+fn mutable_state_trace_has_explicit_filters_and_machine_readable_attribution() {
+    let mut s = Session::clean_room();
+
+    ok(&mut s, "mtrace on vram rw 1000 1000");
+    ok(&mut s, "vpoke 1000 AA");
+    assert!(ok(&mut s, "mtrace show").contains("log holds 0 accesses"));
+    assert!(s.exec("mtrace on grom rw 0000 FFFF").is_err());
+    assert!(s.exec("mtrace on cpu r 3FFF 8000").is_err());
+
+    let armed = ok(
+        &mut s,
+        "mtrace on cpu rw 8375 8375 vram rw 0000 3FFF grom r 0000 FFFF",
+    );
+    assert!(armed.contains("cpu:rw:>8375-8375"), "{armed}");
+    ok(&mut s, "frames 30");
+    let tail = ok(&mut s, "mtrace tail 8");
+    for field in [
+        "cycle=", "frame=", "pc=>", "opcode=>", "r11=>", "r9=>", "grom=>", "gbyte=>", "space=",
+        "access=", "addr=>", "byte=>",
+    ] {
+        assert!(tail.contains(field), "missing {field:?} in {tail}");
+    }
+
+    let path = scratch("mtrace.txt");
+    ok(&mut s, &format!("mtrace save {}", path.display()));
+    let trace = std::fs::read_to_string(&path).unwrap();
+    assert!(trace
+        .lines()
+        .next()
+        .is_some_and(|line| line.contains("space=")));
+    ok(&mut s, "mtrace clear");
+    assert!(ok(&mut s, "mtrace").contains("log holds 0 accesses"));
+
+    let state = scratch("mtrace.state");
+    ok(&mut s, &format!("save {}", state.display()));
+    ok(&mut s, &format!("load {}", state.display()));
+    assert!(ok(&mut s, "mtrace").contains("no log allocated"));
+    let _ = std::fs::remove_file(&path);
+    let _ = std::fs::remove_file(&state);
+}
+
+#[test]
 fn source_scripts_run_with_echoed_transcripts() {
     let path = scratch("script.txt");
     std::fs::write(&path, "# a comment\nframes 2\necho done\n").unwrap();
